@@ -1,5 +1,8 @@
 package com.tk.quicksearch.settings.settingsDetailScreen
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,17 +37,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -75,6 +79,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val NOTE_EDITOR_BACK_SWIPE_THRESHOLD_PX = 140f
+private const val NOTE_EDITOR_TITLE_FIELD = "title"
+private const val NOTE_EDITOR_BODY_FIELD = "body"
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
 private fun applyNoteLinkHighlighting(
     value: TextFieldValue,
@@ -86,7 +99,7 @@ private fun applyNoteLinkHighlighting(
     )
 
 private fun launchNoteLink(
-    context: android.content.Context,
+    context: Context,
     url: String,
 ) {
     val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
@@ -113,8 +126,9 @@ private fun LinkStyledNoteTextField(
     decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit,
     focusRequester: FocusRequester,
     density: Density,
-    context: android.content.Context,
+    context: Context,
     readOnly: Boolean = false,
+    onFocusChanged: (Boolean) -> Unit = {},
 ) {
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var linkMenu by remember { mutableStateOf<Pair<String, DpOffset>?>(null) }
@@ -127,6 +141,7 @@ private fun LinkStyledNoteTextField(
                 Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
+                    .onFocusChanged { onFocusChanged(it.isFocused) }
                     .pointerInput(value.text, textLayoutResult) {
                         detectTapGestures(
                             onTap = { tapOffset ->
@@ -205,15 +220,24 @@ fun NoteEditor(
     val linkColor = MaterialTheme.colorScheme.primary
     val repository = remember(context) { NotesRepository(context) }
 
-    var activeNoteId by remember { mutableLongStateOf(-1L) }
-    var titleInput by remember { mutableStateOf(TextFieldValue("")) }
-    var bodyInput by remember { mutableStateOf(TextFieldValue("")) }
-    var contentBaseline by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var isNewNoteEntry by remember { mutableStateOf(false) }
-    var isQuickNote by remember { mutableStateOf(false) }
+    var activeNoteId by rememberSaveable { mutableStateOf(-1L) }
+    var titleInput by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    var bodyInput by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    var contentBaselineTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var contentBaselineBody by rememberSaveable { mutableStateOf<String?>(null) }
+    var isNewNoteEntry by rememberSaveable { mutableStateOf(false) }
+    var isQuickNote by rememberSaveable { mutableStateOf(false) }
+    var editorInitialized by rememberSaveable { mutableStateOf(false) }
+    var focusedEditorField by rememberSaveable { mutableStateOf<String?>(null) }
+    var initialFocusRequested by remember { mutableStateOf(false) }
     val persistOnLeave = remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
+        if (editorInitialized) return@LaunchedEffect
         val pendingId = NotesNavigationMemory.consumePendingNoteId()
         if (pendingId != null) {
             isNewNoteEntry = false
@@ -244,13 +268,17 @@ fun NoteEditor(
             isNewNoteEntry = true
             isQuickNote = false
         }
-        contentBaseline = titleInput.text to bodyInput.text
+        contentBaselineTitle = titleInput.text
+        contentBaselineBody = bodyInput.text
+        editorInitialized = true
     }
 
     val hasEdits =
-        contentBaseline?.let { (t, b) ->
-            titleInput.text != t || bodyInput.text != b
-        } == true
+        if (contentBaselineTitle != null && contentBaselineBody != null) {
+            titleInput.text != contentBaselineTitle || bodyInput.text != contentBaselineBody
+        } else {
+            false
+        }
 
     val noteScrollState = rememberScrollState()
     val bodyBringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -259,16 +287,21 @@ fun NoteEditor(
     val bodyFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    LaunchedEffect(isNewNoteEntry, contentBaseline, hideTopBar) {
-        if (contentBaseline == null) return@LaunchedEffect
+    LaunchedEffect(editorInitialized, contentBaselineTitle, contentBaselineBody, hideTopBar) {
+        if (!editorInitialized || initialFocusRequested) return@LaunchedEffect
+        if (contentBaselineTitle == null || contentBaselineBody == null) return@LaunchedEffect
         delay(50)
-        if (hideTopBar) {
-            bodyFocusRequester.requestFocus()
-        } else if (isNewNoteEntry) {
-            titleFocusRequester.requestFocus()
-        } else {
-            return@LaunchedEffect
+        when (focusedEditorField) {
+            NOTE_EDITOR_TITLE_FIELD -> titleFocusRequester.requestFocus()
+            NOTE_EDITOR_BODY_FIELD -> bodyFocusRequester.requestFocus()
+            null ->
+                when {
+                    hideTopBar -> bodyFocusRequester.requestFocus()
+                    isNewNoteEntry -> titleFocusRequester.requestFocus()
+                    else -> return@LaunchedEffect
+                }
         }
+        initialFocusRequested = true
         keyboardController?.show()
     }
 
@@ -289,13 +322,14 @@ fun NoteEditor(
         if (!hasEdits) return@LaunchedEffect
         delay(450)
         persistNote()
-        contentBaseline = titleInput.text to bodyInput.text
+        contentBaselineTitle = titleInput.text
+        contentBaselineBody = bodyInput.text
     }
 
     val currentPersist by rememberUpdatedState(newValue = ::persistNote)
     DisposableEffect(Unit) {
         onDispose {
-            if (persistOnLeave.value) {
+            if (persistOnLeave.value && context.findActivity()?.isChangingConfigurations != true) {
                 currentPersist()
             }
         }
@@ -389,6 +423,9 @@ fun NoteEditor(
                         density = density,
                         context = context,
                         readOnly = isQuickNote,
+                        onFocusChanged = { isFocused ->
+                            if (isFocused) focusedEditorField = NOTE_EDITOR_TITLE_FIELD
+                        },
                         onTextLayout = {},
                         decorationBox = { inner ->
                             if (titleInput.text.isBlank()) {
@@ -450,6 +487,9 @@ fun NoteEditor(
                         density = density,
                         context = context,
                         readOnly = false,
+                        onFocusChanged = { isFocused ->
+                            if (isFocused) focusedEditorField = NOTE_EDITOR_BODY_FIELD
+                        },
                         decorationBox = { inner ->
                             if (bodyInput.text.isBlank()) {
                                 Text(

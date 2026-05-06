@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +24,8 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.background
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.currentState
@@ -39,6 +43,7 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import androidx.glance.color.ColorProvider as DayNightColorProvider
 import androidx.glance.unit.ColorProvider
 import com.tk.quicksearch.R
 import com.tk.quicksearch.app.MainActivity
@@ -47,6 +52,7 @@ import com.tk.quicksearch.widgets.customButtonsWidget.CustomWidgetButtonAction
 import com.tk.quicksearch.widgets.customButtonsWidget.WidgetActionActivity
 import com.tk.quicksearch.widgets.customButtonsWidget.rememberWidgetButtonIcon
 import com.tk.quicksearch.widgets.searchWidget.MicAction
+import com.tk.quicksearch.widgets.utils.TextIconColorOverride
 import com.tk.quicksearch.widgets.utils.WidgetPreferences
 import com.tk.quicksearch.widgets.utils.WidgetVariant
 import com.tk.quicksearch.widgets.utils.WidgetBitmapUtils
@@ -114,9 +120,13 @@ class SearchWidget(
         val colors = calculateColors(config, borderWidthPx)
 
         val hasDefaultBackground = isDefaultBackgroundStyle(config)
+        val useDynamicSystemBackground =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                config.theme == WidgetTheme.SYSTEM &&
+                config.backgroundColor == null
 
         val backgroundBitmap =
-            if (!hasDefaultBackground) {
+            if (!hasDefaultBackground && !useDynamicSystemBackground) {
                 WidgetBitmapUtils.createWidgetBitmap(
                     widthPx = widthPx,
                     heightPx = heightPx,
@@ -146,6 +156,11 @@ class SearchWidget(
                     backgroundBitmap = backgroundBitmap,
                     useDefaultBackground = hasDefaultBackground,
                     textIconColor = colors.textIconColor,
+                    textIconColorProvider = colors.textIconColorProvider,
+                    backgroundColorProvider = colors.backgroundColorProvider,
+                    borderColorProvider = colors.borderColorProvider,
+                    borderWidthDp = config.borderWidthDp.dp,
+                    cornerRadius = config.borderRadiusDp.dp,
                     // Hide label only when width is very narrow (≈2 columns) to keep icon visible
                     showLabel = config.showLabel && !isNarrowWidth,
                     showSearchIcon = config.showSearchIcon,
@@ -165,6 +180,11 @@ class SearchWidget(
                     backgroundBitmap = backgroundBitmap,
                     useDefaultBackground = hasDefaultBackground,
                     textIconColor = colors.textIconColor,
+                    textIconColorProvider = colors.textIconColorProvider,
+                    backgroundColorProvider = colors.backgroundColorProvider,
+                    borderColorProvider = colors.borderColorProvider,
+                    borderWidthDp = config.borderWidthDp.dp,
+                    cornerRadius = config.borderRadiusDp.dp,
                     internalHorizontalPaddingDp = config.internalHorizontalPaddingDp,
                     internalVerticalPaddingDp = config.internalVerticalPaddingDp,
                     customButtons = customButtons,
@@ -176,6 +196,9 @@ class SearchWidget(
         val backgroundColor: Color,
         val borderColor: Color?,
         val textIconColor: Color,
+        val backgroundColorProvider: ColorProvider = ColorProvider(backgroundColor),
+        val borderColorProvider: ColorProvider? = borderColor?.let(::ColorProvider),
+        val textIconColorProvider: ColorProvider = ColorProvider(textIconColor),
     )
 
     @Composable
@@ -195,6 +218,10 @@ class SearchWidget(
             }
 
         val customBackgroundColor = config.backgroundColor?.let(::Color)
+        val useDynamicSystemColors =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                config.theme == WidgetTheme.SYSTEM &&
+                customBackgroundColor == null
         val backgroundColor =
             customBackgroundColor?.copy(alpha = config.backgroundAlpha)
                 ?: WidgetColorUtils.getBackgroundColor(
@@ -220,6 +247,61 @@ class SearchWidget(
             backgroundColor = backgroundColor,
             borderColor = borderColor,
             textIconColor = textIconColor,
+            backgroundColorProvider =
+                if (useDynamicSystemColors) {
+                    DayNightColorProvider(
+                        day = WidgetColorUtils.getBackgroundColor(WidgetTheme.LIGHT, config.backgroundAlpha),
+                        night = WidgetColorUtils.getBackgroundColor(WidgetTheme.DARK, config.backgroundAlpha),
+                    )
+                } else {
+                    ColorProvider(backgroundColor)
+                },
+            borderColorProvider =
+                if (borderWidthPx > 0) {
+                    if (useDynamicSystemColors) {
+                        val lightBackground = WidgetColorUtils.getBackgroundColor(WidgetTheme.LIGHT, config.backgroundAlpha)
+                        val darkBackground = WidgetColorUtils.getBackgroundColor(WidgetTheme.DARK, config.backgroundAlpha)
+                        DayNightColorProvider(
+                            day =
+                                WidgetColorUtils.getBorderColor(
+                                    config.borderColor,
+                                    config.borderAlpha,
+                                    WidgetTheme.LIGHT,
+                                    config.borderColorOption,
+                                ).compositeOver(lightBackground),
+                            night =
+                                WidgetColorUtils.getBorderColor(
+                                    config.borderColor,
+                                    config.borderAlpha,
+                                    WidgetTheme.DARK,
+                                    config.borderColorOption,
+                                ).compositeOver(darkBackground),
+                        )
+                    } else {
+                        borderColor?.let(::ColorProvider)
+                    }
+                } else {
+                    null
+                },
+            textIconColorProvider =
+                if (useDynamicSystemColors && config.textIconColorOverride == TextIconColorOverride.THEME) {
+                    DayNightColorProvider(
+                        day =
+                            WidgetColorUtils.getTextIconColor(
+                                WidgetTheme.LIGHT,
+                                config.backgroundAlpha,
+                                config.textIconColorOverride,
+                            ),
+                        night =
+                            WidgetColorUtils.getTextIconColor(
+                                WidgetTheme.DARK,
+                                config.backgroundAlpha,
+                                config.textIconColorOverride,
+                            ),
+                    )
+                } else {
+                    ColorProvider(textIconColor)
+                },
         )
     }
 
@@ -242,6 +324,11 @@ private fun CustomButtonsOnlyWidgetContent(
     backgroundBitmap: Bitmap?,
     useDefaultBackground: Boolean,
     textIconColor: Color,
+    textIconColorProvider: ColorProvider,
+    backgroundColorProvider: ColorProvider,
+    borderColorProvider: ColorProvider?,
+    borderWidthDp: Dp,
+    cornerRadius: Dp,
     internalHorizontalPaddingDp: Float,
     internalVerticalPaddingDp: Float,
     customButtons: List<CustomWidgetButtonAction>,
@@ -294,18 +381,6 @@ private fun CustomButtonsOnlyWidgetContent(
             modifier = GlanceModifier.fillMaxSize().padding(0.dp),
             contentAlignment = Alignment.Center,
         ) {
-            val widgetModifier =
-                GlanceModifier
-                    .fillMaxWidth()
-                    .height(barHeight)
-                    .background(
-                        if (useDefaultBackground) {
-                            ImageProvider(R.drawable.widget_quick_search_placeholder_outline)
-                        } else {
-                            ImageProvider(backgroundBitmap!!)
-                        },
-                    ).padding(horizontal = contentHorizontalPadding)
-
             Box(
                 modifier =
                     GlanceModifier
@@ -313,8 +388,15 @@ private fun CustomButtonsOnlyWidgetContent(
                         .padding(start = outerHorizontalPadding, end = outerHorizontalPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = widgetModifier,
+                WidgetBarContainer(
+                    barHeight = barHeight,
+                    backgroundBitmap = backgroundBitmap,
+                    useDefaultBackground = useDefaultBackground,
+                    backgroundColorProvider = backgroundColorProvider,
+                    borderColorProvider = borderColorProvider,
+                    borderWidthDp = borderWidthDp,
+                    cornerRadius = cornerRadius,
+                    contentHorizontalPadding = contentHorizontalPadding,
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
@@ -367,7 +449,7 @@ private fun CustomButtonsOnlyWidgetContent(
                                         modifier = GlanceModifier.size(20.dp),
                                         colorFilter =
                                             if (icon.shouldTint) {
-                                                ColorFilter.tint(ColorProvider(textIconColor))
+                                                ColorFilter.tint(textIconColorProvider)
                                             } else {
                                                 null
                                             },
@@ -389,6 +471,11 @@ private fun WidgetContent(
     backgroundBitmap: Bitmap?,
     useDefaultBackground: Boolean,
     textIconColor: Color,
+    textIconColorProvider: ColorProvider,
+    backgroundColorProvider: ColorProvider,
+    borderColorProvider: ColorProvider?,
+    borderWidthDp: Dp,
+    cornerRadius: Dp,
     showLabel: Boolean,
     showSearchIcon: Boolean,
     showMicIcon: Boolean,
@@ -430,22 +517,17 @@ private fun WidgetContent(
                     ),
             contentAlignment = Alignment.Center,
         ) {
-            val widgetModifier =
-                GlanceModifier
-                    .fillMaxWidth()
-                    .height(barHeight)
-                    .background(
-                        if (useDefaultBackground) {
-                            ImageProvider(R.drawable.widget_quick_search_placeholder_outline)
-                        } else {
-                            ImageProvider(backgroundBitmap!!)
-                        },
-                    ).padding(horizontal = contentHorizontalPadding)
-
             if (iconAlignLeft) {
                 // Left alignment: icon on left, text centered
-                Box(
-                    modifier = widgetModifier,
+                WidgetBarContainer(
+                    barHeight = barHeight,
+                    backgroundBitmap = backgroundBitmap,
+                    useDefaultBackground = useDefaultBackground,
+                    backgroundColorProvider = backgroundColorProvider,
+                    borderColorProvider = borderColorProvider,
+                    borderWidthDp = borderWidthDp,
+                    cornerRadius = cornerRadius,
+                    contentHorizontalPadding = contentHorizontalPadding,
                     contentAlignment = Alignment.Center,
                 ) {
                     // Text is always centered
@@ -454,7 +536,7 @@ private fun WidgetContent(
                             text = context.getString(R.string.app_name),
                             style =
                                 TextStyle(
-                                    color = ColorProvider(textIconColor),
+                                    color = textIconColorProvider,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Medium,
                                 ),
@@ -475,38 +557,49 @@ private fun WidgetContent(
                                 provider = ImageProvider(R.drawable.ic_widget_search),
                                 contentDescription = context.getString(R.string.desc_search_icon),
                                 modifier = GlanceModifier.size(20.dp),
-                                colorFilter = ColorFilter.tint(ColorProvider(textIconColor)),
+                                colorFilter = ColorFilter.tint(textIconColorProvider),
                             )
                         }
                     }
                 }
             } else {
                 // Center alignment: icon and text together, centered as a unit
-                Row(
-                    modifier = widgetModifier,
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                WidgetBarContainer(
+                    barHeight = barHeight,
+                    backgroundBitmap = backgroundBitmap,
+                    useDefaultBackground = useDefaultBackground,
+                    backgroundColorProvider = backgroundColorProvider,
+                    borderColorProvider = borderColorProvider,
+                    borderWidthDp = borderWidthDp,
+                    cornerRadius = cornerRadius,
+                    contentHorizontalPadding = contentHorizontalPadding,
+                    contentAlignment = Alignment.Center,
                 ) {
-                    if (showSearchIcon) {
-                        Image(
-                            provider = ImageProvider(R.drawable.ic_widget_search),
-                            contentDescription = context.getString(R.string.desc_search_icon),
-                            modifier = GlanceModifier.size(20.dp),
-                            colorFilter = ColorFilter.tint(ColorProvider(textIconColor)),
-                        )
-                    }
-                    if (showLabel) {
-                        Text(
-                            text = context.getString(R.string.app_name),
-                            modifier = GlanceModifier.padding(start = if (showSearchIcon) 8.dp else 0.dp),
-                            style =
-                                TextStyle(
-                                    color = ColorProvider(textIconColor),
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium,
-                                ),
-                            maxLines = 1,
-                        )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        if (showSearchIcon) {
+                            Image(
+                                provider = ImageProvider(R.drawable.ic_widget_search),
+                                contentDescription = context.getString(R.string.desc_search_icon),
+                                modifier = GlanceModifier.size(20.dp),
+                                colorFilter = ColorFilter.tint(textIconColorProvider),
+                            )
+                        }
+                        if (showLabel) {
+                            Text(
+                                text = context.getString(R.string.app_name),
+                                modifier = GlanceModifier.padding(start = if (showSearchIcon) 8.dp else 0.dp),
+                                style =
+                                    TextStyle(
+                                        color = textIconColorProvider,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    ),
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
             }
@@ -563,7 +656,7 @@ private fun WidgetContent(
                                         modifier = GlanceModifier.size(20.dp),
                                         colorFilter =
                                             if (icon.shouldTint) {
-                                                ColorFilter.tint(ColorProvider(textIconColor))
+                                                ColorFilter.tint(textIconColorProvider)
                                             } else {
                                                 null
                                             },
@@ -590,7 +683,7 @@ private fun WidgetContent(
                                     provider = ImageProvider(R.drawable.ic_widget_mic),
                                     contentDescription = context.getString(R.string.desc_voice_search_icon),
                                     modifier = GlanceModifier.size(20.dp),
-                                    colorFilter = ColorFilter.tint(ColorProvider(textIconColor)),
+                                    colorFilter = ColorFilter.tint(textIconColorProvider),
                                 )
                             }
                         }
@@ -609,6 +702,65 @@ private fun computeSafeOuterHorizontalPadding(
     val requested = requestedPaddingDp.finiteOr(0f).coerceAtLeast(0f)
     val maxPadding = ((safeWidth - MIN_RENDERABLE_WIDTH_DP) / 2f).coerceAtLeast(0f)
     return requested.coerceAtMost(maxPadding).dp
+}
+
+@Composable
+private fun WidgetBarContainer(
+    barHeight: Dp,
+    backgroundBitmap: Bitmap?,
+    useDefaultBackground: Boolean,
+    backgroundColorProvider: ColorProvider,
+    borderColorProvider: ColorProvider?,
+    borderWidthDp: Dp,
+    cornerRadius: Dp,
+    contentHorizontalPadding: Dp,
+    contentAlignment: Alignment,
+    content: @Composable () -> Unit,
+) {
+    if (useDefaultBackground || backgroundBitmap != null) {
+        Box(
+            modifier =
+                GlanceModifier
+                    .fillMaxWidth()
+                    .height(barHeight)
+                    .background(
+                        if (useDefaultBackground) {
+                            ImageProvider(R.drawable.widget_quick_search_placeholder_outline)
+                        } else {
+                            ImageProvider(backgroundBitmap!!)
+                        },
+                    ).padding(horizontal = contentHorizontalPadding),
+            contentAlignment = contentAlignment,
+        ) {
+            content()
+        }
+        return
+    }
+
+    val safeBorderWidth = borderWidthDp.coerceAtLeast(0.dp)
+    val innerRadius = (cornerRadius - safeBorderWidth).coerceAtLeast(0.dp)
+    Box(
+        modifier =
+            GlanceModifier
+                .fillMaxWidth()
+                .height(barHeight)
+                .background(borderColorProvider ?: backgroundColorProvider)
+                .cornerRadius(cornerRadius)
+                .padding(safeBorderWidth),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier =
+                GlanceModifier
+                    .fillMaxSize()
+                    .background(backgroundColorProvider)
+                    .cornerRadius(innerRadius)
+                    .padding(horizontal = contentHorizontalPadding),
+            contentAlignment = contentAlignment,
+        ) {
+            content()
+        }
+    }
 }
 
 private fun isDefaultBackgroundStyle(config: WidgetPreferences): Boolean =

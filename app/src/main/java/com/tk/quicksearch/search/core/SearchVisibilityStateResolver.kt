@@ -169,8 +169,8 @@ internal class SearchVisibilityStateResolver {
             state.detectedShortcutTarget != null ->
                 SearchEnginesVisibility.ShortcutDetected(state.detectedShortcutTarget)
             state.detectedAliasSearchSection != null -> SearchEnginesVisibility.Hidden
-            isLikelyWebUrl(state.query) -> SearchEnginesVisibility.Hidden
             state.isSearchEngineCompactMode -> SearchEnginesVisibility.Compact
+            isLikelyWebUrl(state.query) -> SearchEnginesVisibility.Hidden
             else -> SearchEnginesVisibility.Hidden
         }
 

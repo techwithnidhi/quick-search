@@ -139,6 +139,7 @@ internal fun SearchScreenContent(
         isOverlayPresentation: Boolean = false,
         showSearchField: Boolean = true,
         onOpenPermissionsSettings: () -> Unit = {},
+        getAllTriggerWordsById: () -> Map<String, String> = { emptyMap() },
         getAllContactActionTriggers: () -> Map<com.tk.quicksearch.search.data.preferences.ContactActionTriggerKey, com.tk.quicksearch.search.data.preferences.ResultTrigger> = { emptyMap() },
         onContactActionTrigger: (Long, com.tk.quicksearch.search.contacts.models.ContactCardAction) -> Unit = { _, _ -> },
 ) {
@@ -179,6 +180,7 @@ internal fun SearchScreenContent(
     val isWordClockAliasMode = state.isWordClockAliasMode
     val isDictionaryAliasMode = state.isDictionaryAliasMode
     val activeCustomTool = state.detectedCustomToolId?.let { id -> state.customTools.find { it.id == id } }
+    val triggerWords = remember(getAllTriggerWordsById, state.nicknameUpdateVersion) { getAllTriggerWordsById().values }
 
     val hintSearchAnything = stringResource(R.string.search_hint)
     val cycleHints = stringArrayResource(R.array.search_hints_cycle)
@@ -744,6 +746,7 @@ internal fun SearchScreenContent(
                 enabledTargets = enabledTargets,
                 shortcutCodes = state.shortcutCodes,
                 shortcutEnabled = state.shortcutEnabled,
+                triggerWords = triggerWords,
                 isSearchEngineAliasSuffixEnabled = state.isSearchEngineAliasSuffixEnabled,
                 shouldUseNumberKeyboard = manuallySwitchedToNumberKeyboard || isCalculatorMode,
                 detectedShortcutTarget = state.detectedShortcutTarget,

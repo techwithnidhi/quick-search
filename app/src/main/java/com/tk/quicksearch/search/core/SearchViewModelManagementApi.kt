@@ -68,6 +68,9 @@ internal interface SearchViewModelManagementApi {
     fun getAllTriggerWordsById(): Map<String, String> =
         managementApiDelegate.getAllTriggerWordsById()
 
+    fun getAllAliasWordsById(): Map<String, String> =
+        managementApiDelegate.getAllAliasWordsById()
+
     fun clearCachedApps() = managementApiDelegate.clearCachedApps()
 
     fun pinContact(contactInfo: ContactInfo) = managementApiDelegate.pinContact(contactInfo)
@@ -392,6 +395,8 @@ class SearchViewModelManagementApiDelegate internal constructor(
     fun getAppTrigger(packageName: String): ResultTrigger? = userPreferences.getAppTrigger(packageName)
 
     fun getAllTriggerWordsById(): Map<String, String> = userPreferences.getAllTriggerWordsById()
+
+    fun getAllAliasWordsById(): Map<String, String> = userPreferences.getAllAliasWordsById()
 
     fun clearCachedApps() = appSearchManager().clearCachedApps()
 

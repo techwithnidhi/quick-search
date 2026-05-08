@@ -137,6 +137,8 @@ fun SearchRoute(
         remember(nicknameUpdateVersion) { { id -> viewModel.getAppShortcutTrigger(id) } }
     val getAllTriggerWordsById: () -> Map<String, String> =
         remember(nicknameUpdateVersion) { { viewModel.getAllTriggerWordsById() } }
+    val getAllAliasWordsById: () -> Map<String, String> =
+        remember(nicknameUpdateVersion) { { viewModel.getAllAliasWordsById() } }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val effectiveSnackbarHostState = overlaySnackbarHostState ?: snackbarHostState
@@ -643,6 +645,7 @@ fun SearchRoute(
             getAppShortcutTrigger = getAppShortcutTrigger,
             getSettingTrigger = getSettingTrigger,
             getAllTriggerWordsById = getAllTriggerWordsById,
+            getAllAliasWordsById = getAllAliasWordsById,
             onSaveAppNickname = viewModel::setAppNickname,
             onSaveAppShortcutNickname = viewModel::setAppShortcutNickname,
             onSaveContactNickname = viewModel::setContactNickname,

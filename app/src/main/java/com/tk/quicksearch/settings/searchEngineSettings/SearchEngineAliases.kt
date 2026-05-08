@@ -13,10 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import com.tk.quicksearch.R
+import com.tk.quicksearch.search.data.UserAppPreferences
 import com.tk.quicksearch.searchEngines.AliasValidator.hasExactAliasConflict
 import com.tk.quicksearch.searchEngines.AliasValidator.isValidGeneralAliasCode
 import com.tk.quicksearch.shared.ui.theme.AppColors
@@ -56,6 +58,11 @@ internal fun AliasCodeDisplay(
     modifier: Modifier = Modifier,
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val existingTriggerWords =
+        remember(context) {
+            UserAppPreferences(context).getAllTriggerWordsById().values.toList()
+        }
     val isCustomEngine = currentShortcutId?.startsWith("custom:") == true
     val allowAliasDialog = !isCustomEngine
 
@@ -81,6 +88,7 @@ internal fun AliasCodeDisplay(
                 },
             validateCode = validateCode,
             validateConflict = validateConflict,
+            existingTriggerWords = existingTriggerWords,
             conflictErrorMessage = conflictErrorMessage,
             allowEmptyAlias = allowEmptyAlias,
             onDismiss = { showDialog = false },

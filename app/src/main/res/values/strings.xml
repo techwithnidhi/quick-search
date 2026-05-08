@@ -233,6 +233,7 @@
     <string name="dialog_direct_dial_title">Choose how to call</string>
     <string name="dialog_done">Done</string>
     <string name="dialog_edit_alias_error_prefix">This alias is already taken.</string>
+    <string name="dialog_edit_alias_error_trigger_conflict">This alias matches an existing trigger.</string>
     <string name="dialog_edit_alias_for_search_type_title">Edit Alias for "%1$s"</string>
     <string name="dialog_edit_alias_title">Edit alias</string>
     <string name="dialog_edit_amazon_domain_error">Invalid domain</string>
@@ -247,6 +248,7 @@
     <string name="dialog_trigger_hint">Trigger word</string>
     <string name="dialog_trigger_message">Enter a one-word trigger for "%1$s".</string>
     <string name="dialog_trigger_error_taken">This trigger is already taken.</string>
+    <string name="dialog_trigger_error_alias_conflict">This trigger matches an existing alias.</string>
 
     <string name="dialog_no">No</string>
     <string name="dialog_ok">Continue</string>

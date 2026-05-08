@@ -143,6 +143,7 @@ internal fun PersistentSearchBar(
     enabledTargets: List<SearchTarget>,
     shortcutCodes: Map<String, String> = emptyMap(),
     shortcutEnabled: Map<String, Boolean> = emptyMap(),
+    triggerWords: Collection<String> = emptyList(),
     isSearchEngineAliasSuffixEnabled: Boolean = true,
     onSearchAction: () -> Boolean,
     shouldUseNumberKeyboard: Boolean,
@@ -194,6 +195,7 @@ internal fun PersistentSearchBar(
             enabledTargets = enabledTargets,
             shortcutCodes = shortcutCodes,
             shortcutEnabled = shortcutEnabled,
+            triggerWords = triggerWords,
             isSearchEngineAliasSuffixEnabled = isSearchEngineAliasSuffixEnabled && !isAliasDetected,
             highlightColor = AppColors.LinkColor,
         )

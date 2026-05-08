@@ -35,6 +35,7 @@ import com.tk.quicksearch.R
 import com.tk.quicksearch.searchEngines.AliasValidator.hasExactAliasConflict
 import com.tk.quicksearch.searchEngines.AliasValidator.isValidGeneralAliasCode
 import com.tk.quicksearch.searchEngines.AliasValidator.normalizeShortcutCodeInput
+import com.tk.quicksearch.search.utils.SearchTextNormalizer
 
 enum class AliasInfoType {
     SEARCH_TYPE,
@@ -65,6 +66,7 @@ fun AddEditAliasDialog(
     validateConflict: (String, Map<String, String>) -> Boolean = { input, existing ->
         !hasExactAliasConflict(input, existing)
     },
+    existingTriggerWords: Collection<String> = emptyList(),
     conflictErrorMessage: String? = null,
     allowEmptyAlias: Boolean = true,
     onDismiss: () -> Unit,
@@ -87,12 +89,25 @@ fun AddEditAliasDialog(
             existingShortcuts.filterKeys { it != currentShortcutId }
         }
     val isValidConflict = validateConflict(editingCode.text, existingShortcutsForValidation)
-    val showShortcutError = editingCode.text.isNotEmpty() && !isValidConflict
+    val normalizedAliasToken =
+        remember(editingCode.text) {
+            SearchTextNormalizer.normalizeForSearch(editingCode.text).trim().substringBefore(' ')
+        }
+    val hasTriggerConflict =
+        remember(normalizedAliasToken, existingTriggerWords) {
+            normalizedAliasToken.isNotBlank() &&
+                existingTriggerWords.any {
+                    SearchTextNormalizer.normalizeForSearch(it).trim().substringBefore(' ') ==
+                        normalizedAliasToken
+                }
+        }
+    val hasAnyConflict = !isValidConflict || hasTriggerConflict
+    val showShortcutError = editingCode.text.isNotEmpty() && hasAnyConflict
     val isEmptyInput = editingCode.text.isEmpty()
     val confirmEnabled = if (allowEmptyAlias) {
-        isEmptyInput || (isValidShortcut && isValidConflict)
+        isEmptyInput || (isValidShortcut && !hasAnyConflict)
     } else {
-        !isEmptyInput && isValidShortcut && isValidConflict
+        !isEmptyInput && isValidShortcut && !hasAnyConflict
     }
     val infoText =
         when (aliasInfoType) {
@@ -179,6 +194,8 @@ fun AddEditAliasDialog(
                         when {
                             !isValidConflict ->
                                 conflictErrorMessage ?: stringResource(R.string.dialog_edit_alias_error_prefix)
+                            hasTriggerConflict ->
+                                stringResource(R.string.dialog_edit_alias_error_trigger_conflict)
                             else -> ""
                         }
                     Text(
@@ -224,6 +241,7 @@ fun EditAliasDialog(
     validateConflict: (String, Map<String, String>) -> Boolean = { input, existing ->
         !hasExactAliasConflict(input, existing)
     },
+    existingTriggerWords: Collection<String> = emptyList(),
     conflictErrorMessage: String? = null,
     onDismiss: () -> Unit,
 ) = AddEditAliasDialog(
@@ -237,6 +255,7 @@ fun EditAliasDialog(
     dialogTitle = dialogTitle,
     validateCode = validateCode,
     validateConflict = validateConflict,
+    existingTriggerWords = existingTriggerWords,
     conflictErrorMessage = conflictErrorMessage,
     onDismiss = onDismiss,
 )

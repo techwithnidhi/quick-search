@@ -43,6 +43,7 @@ fun TriggerDialog(
     currentTrigger: ResultTrigger?,
     itemName: String,
     existingTriggerWords: Collection<String>,
+    existingAliasWords: Collection<String> = emptyList(),
     onSave: (ResultTrigger?) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -66,7 +67,7 @@ fun TriggerDialog(
         remember(triggerText.text) {
             SearchTextNormalizer.normalizeForSearch(triggerText.text).trim().substringBefore(' ')
         }
-    val hasConflict =
+    val hasTriggerConflict =
         remember(normalizedTrigger, existingTriggerWords) {
             normalizedTrigger.isNotBlank() &&
                 existingTriggerWords.any {
@@ -74,6 +75,15 @@ fun TriggerDialog(
                         normalizedTrigger
                 }
         }
+    val hasAliasConflict =
+        remember(normalizedTrigger, existingAliasWords) {
+            normalizedTrigger.isNotBlank() &&
+                existingAliasWords.any {
+                    SearchTextNormalizer.normalizeForSearch(it).trim().substringBefore(' ') ==
+                        normalizedTrigger
+                }
+        }
+    val hasConflict = hasTriggerConflict || hasAliasConflict
     val canSave = !hasConflict
 
     LaunchedEffect(Unit) {
@@ -137,7 +147,12 @@ fun TriggerDialog(
                 if (hasConflict) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.dialog_trigger_error_taken),
+                        text =
+                            if (hasAliasConflict) {
+                                stringResource(R.string.dialog_trigger_error_alias_conflict)
+                            } else {
+                                stringResource(R.string.dialog_trigger_error_taken)
+                            },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )

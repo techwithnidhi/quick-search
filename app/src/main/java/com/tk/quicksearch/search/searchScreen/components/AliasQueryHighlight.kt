@@ -18,6 +18,7 @@ internal fun rememberAliasHighlightVisualTransformation(
     enabledTargets: List<SearchTarget>,
     shortcutCodes: Map<String, String>,
     shortcutEnabled: Map<String, Boolean>,
+    triggerWords: Collection<String>,
     isSearchEngineAliasSuffixEnabled: Boolean,
     highlightColor: Color,
 ): VisualTransformation {
@@ -26,17 +27,21 @@ internal fun rememberAliasHighlightVisualTransformation(
             enabledTargets.mapTo(mutableSetOf()) { it.getId() }
         }
     val activeAliases =
-        remember(shortcutCodes, shortcutEnabled) {
-            shortcutCodes.entries
-                .asSequence()
-                .filter { (id, code) -> code.isNotBlank() && (shortcutEnabled[id] != false) }
-                .mapNotNull { (_, rawAlias) ->
-                    val normalized = rawAlias.trim().lowercase(Locale.getDefault())
-                    normalized.takeIf { it.isNotEmpty() }
-                }
-                .toSet()
-                .toList()
-                .sortedByDescending { it.length }
+        remember(shortcutCodes, shortcutEnabled, triggerWords) {
+            buildSet {
+                shortcutCodes.entries
+                    .asSequence()
+                    .filter { (id, code) -> code.isNotBlank() && (shortcutEnabled[id] != false) }
+                    .mapNotNull { (_, rawAlias) ->
+                        val normalized = rawAlias.trim().lowercase(Locale.getDefault())
+                        normalized.takeIf { it.isNotEmpty() }
+                    }.forEach(::add)
+                triggerWords
+                    .asSequence()
+                    .map { it.trim().lowercase(Locale.getDefault()) }
+                    .filter { it.isNotEmpty() }
+                    .forEach(::add)
+            }.toList().sortedByDescending { it.length }
         }
     val activeSearchTargetAliases =
         remember(shortcutCodes, shortcutEnabled, searchTargetIds) {

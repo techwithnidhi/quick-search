@@ -11,6 +11,7 @@ import com.tk.quicksearch.tools.aiSearch.AiSearchHandler
 import com.tk.quicksearch.searchEngines.AliasValidator.hasExactAliasConflict
 import com.tk.quicksearch.searchEngines.AliasValidator.isValidGeneralAliasCode
 import com.tk.quicksearch.searchEngines.AliasValidator.normalizeShortcutCodeInput
+import com.tk.quicksearch.search.utils.SearchTextNormalizer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -266,6 +267,19 @@ class AliasHandler(
                     .filterValues { it.isNotBlank() }
             val isConflictFree = !hasExactAliasConflict(normalizedCode, existingAliasesForValidation)
             if (!isConflictFree) {
+                return@launch
+            }
+            val normalizedAliasToken =
+                SearchTextNormalizer.normalizeForSearch(normalizedCode).trim().substringBefore(' ')
+            if (normalizedAliasToken.isBlank()) {
+                return@launch
+            }
+            val hasTriggerConflict =
+                userPreferences.getAllTriggerWordsById().values.any { triggerWord ->
+                    SearchTextNormalizer.normalizeForSearch(triggerWord).trim().substringBefore(' ') ==
+                        normalizedAliasToken
+                }
+            if (hasTriggerConflict) {
                 return@launch
             }
 

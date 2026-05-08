@@ -12,6 +12,8 @@ import com.tk.quicksearch.search.core.SearchSection
 import com.tk.quicksearch.search.data.preferences.*
 import com.tk.quicksearch.search.models.FileType
 import com.tk.quicksearch.search.searchHistory.SearchHistoryPreferences
+import com.tk.quicksearch.searchEngines.AliasValidator.isValidGeneralAliasCode
+import com.tk.quicksearch.searchEngines.AliasValidator.normalizeShortcutCodeInput
 import com.tk.quicksearch.tools.aiSearch.AiSearchLlmProviderId
 
 /**
@@ -506,6 +508,19 @@ class UserAppPreferences(
                     put("note:$id", trigger.word)
                 }
             }
+
+    fun getAllAliasWordsById(): Map<String, String> =
+            sharedPrefs.all.mapNotNull { (key, value) ->
+                if (!key.startsWith(BasePreferences.KEY_ALIAS_CODE_PREFIX)) return@mapNotNull null
+                val aliasId = key.removePrefix(BasePreferences.KEY_ALIAS_CODE_PREFIX)
+                val rawValue = (value as? String).orEmpty()
+                val normalized = normalizeShortcutCodeInput(rawValue)
+                if (!isValidGeneralAliasCode(normalized)) {
+                    null
+                } else {
+                    aliasId to normalized
+                }
+            }.toMap()
 
     fun hasAnyTriggerItems(): Boolean = getAllTriggerWordsById().isNotEmpty()
 

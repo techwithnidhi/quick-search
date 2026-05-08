@@ -138,6 +138,7 @@ fun SearchScreen(
     getAppShortcutTrigger: (String) -> com.tk.quicksearch.search.data.preferences.ResultTrigger?,
     getSettingTrigger: (String) -> com.tk.quicksearch.search.data.preferences.ResultTrigger?,
     getAllTriggerWordsById: () -> Map<String, String>,
+    getAllAliasWordsById: () -> Map<String, String>,
     onSaveAppNickname: (AppInfo, String?) -> Unit,
     onSaveAppShortcutNickname: (StaticShortcut, String?) -> Unit,
     onSaveContactNickname: (ContactInfo, String?) -> Unit,
@@ -491,6 +492,7 @@ fun SearchScreen(
             isOverlayPresentation = isOverlayPresentation,
             showSearchField = true,
             onOpenPermissionsSettings = onOpenPermissionsSettings,
+            getAllTriggerWordsById = getAllTriggerWordsById,
             getAllContactActionTriggers = getAllContactActionTriggers,
             onContactActionTrigger = onContactActionTrigger,
         )
@@ -578,6 +580,7 @@ fun SearchScreen(
             stateResult.setTriggerDialogState(null)
         },
         getAllTriggerWordsById = getAllTriggerWordsById,
+        getAllAliasWordsById = getAllAliasWordsById,
         getLastShownPhoneNumber = getLastShownPhoneNumber,
         setLastShownPhoneNumber = setLastShownPhoneNumber,
         onSetPersonalContext = onSetPersonalContext,

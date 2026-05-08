@@ -82,6 +82,7 @@ internal fun SearchScreenDialogLogic(
     onSaveSettingTrigger: (DeviceSetting, com.tk.quicksearch.search.data.preferences.ResultTrigger?) -> Unit,
     onSaveNoteTrigger: (NoteInfo, com.tk.quicksearch.search.data.preferences.ResultTrigger?) -> Unit,
     getAllTriggerWordsById: () -> Map<String, String>,
+    getAllAliasWordsById: () -> Map<String, String>,
     getLastShownPhoneNumber: (Long) -> String?,
     setLastShownPhoneNumber: (Long, String) -> Unit,
     onSetPersonalContext: (String?) -> Unit,
@@ -270,6 +271,7 @@ internal fun SearchScreenDialogLogic(
         onSaveSettingTrigger = onSaveSettingTrigger,
         onSaveNoteTrigger = onSaveNoteTrigger,
         getAllTriggerWordsById = getAllTriggerWordsById,
+        getAllAliasWordsById = getAllAliasWordsById,
         getLastShownPhoneNumber = getLastShownPhoneNumber,
         setLastShownPhoneNumber = setLastShownPhoneNumber,
     )

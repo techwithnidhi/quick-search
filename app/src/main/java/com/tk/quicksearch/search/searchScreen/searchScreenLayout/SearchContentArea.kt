@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -66,6 +71,8 @@ import com.tk.quicksearch.search.models.ContactInfo
 import com.tk.quicksearch.search.models.DeviceFile
 import com.tk.quicksearch.search.deviceSettings.DeviceSetting
 import com.tk.quicksearch.search.searchHistory.RecentSearchEntry
+import com.tk.quicksearch.search.searchHistory.RecentSearchItem
+import com.tk.quicksearch.search.searchHistory.SearchHistoryTab
 import com.tk.quicksearch.search.searchHistory.SearchHistorySection
 import com.tk.quicksearch.searchEngines.*
 import com.tk.quicksearch.searchEngines.compact.NoResultsSearchEngineCards
@@ -74,6 +81,8 @@ import com.tk.quicksearch.shared.ui.theme.DesignTokens
 import com.tk.quicksearch.tools.aiSearch.CalculatorResult
 import com.tk.quicksearch.tools.aiSearch.AiSearchResult
 import kotlin.math.min
+
+private const val SEARCH_HISTORY_TAB_SWIPE_THRESHOLD_PX = 64f
 
 /** Renders the scrollable content area with sections based on layout mode. */
 @Composable
@@ -199,13 +208,27 @@ fun SearchContentArea(
         } else {
             null
         }
+    var searchHistorySelectedTab by rememberSaveable { mutableStateOf(SearchHistoryTab.SEARCHES) }
+    val canSwitchSearchHistoryTabs =
+        state.recentItems.any { it is RecentSearchItem.Query } &&
+            state.recentItems.any { it !is RecentSearchItem.Query }
 
     CompositionLocalProvider(
         LocalOverlayResultCardColor provides overlayCardColor,
         LocalOverlayDividerColor provides overlayDividerTint,
         LocalOverlayActionColor provides overlayActionTint,
     ) {
-        BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        BoxWithConstraints(
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .searchHistoryExpandedTabSwipe(
+                        enabled = isSearchHistoryExpanded,
+                        canSwitchTabs = canSwitchSearchHistoryTabs,
+                        selectedTab = searchHistorySelectedTab,
+                        onTabSelected = { searchHistorySelectedTab = it },
+                    ),
+        ) {
             // Use bottom alignment when one-handed mode is enabled and no special states are
             // showing
             val verticalArrangement =
@@ -434,6 +457,8 @@ fun SearchContentArea(
                             onGeminiModelInfoClick = onGeminiModelInfoClick,
                             onSearchHistoryExpandedChange = onSearchHistoryExpandedChange,
                             searchHistoryCollapseRequestKey = searchHistoryCollapseRequestKey,
+                            searchHistorySelectedTab = searchHistorySelectedTab,
+                            onSearchHistorySelectedTabChange = { searchHistorySelectedTab = it },
                             onOpenPermissionsSettings = onOpenPermissionsSettings,
                         )
                     }
@@ -519,5 +544,39 @@ fun SearchContentArea(
                 )
             }
         }
+    }
+}
+
+private fun Modifier.searchHistoryExpandedTabSwipe(
+    enabled: Boolean,
+    canSwitchTabs: Boolean,
+    selectedTab: SearchHistoryTab,
+    onTabSelected: (SearchHistoryTab) -> Unit,
+): Modifier {
+    if (!enabled) return this
+    return pointerInput(selectedTab, canSwitchTabs) {
+        var totalHorizontalDrag = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { totalHorizontalDrag = 0f },
+            onHorizontalDrag = { change, dragAmount ->
+                totalHorizontalDrag += dragAmount
+                change.consume()
+            },
+            onDragEnd = {
+                if (canSwitchTabs) {
+                    when {
+                        totalHorizontalDrag <= -SEARCH_HISTORY_TAB_SWIPE_THRESHOLD_PX &&
+                            selectedTab != SearchHistoryTab.RECENTLY_OPENED ->
+                            onTabSelected(SearchHistoryTab.RECENTLY_OPENED)
+
+                        totalHorizontalDrag >= SEARCH_HISTORY_TAB_SWIPE_THRESHOLD_PX &&
+                            selectedTab != SearchHistoryTab.SEARCHES ->
+                            onTabSelected(SearchHistoryTab.SEARCHES)
+                    }
+                }
+                totalHorizontalDrag = 0f
+            },
+            onDragCancel = { totalHorizontalDrag = 0f },
+        )
     }
 }

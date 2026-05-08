@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import com.tk.quicksearch.search.core.*
 import com.tk.quicksearch.search.core.isLikelyWebUrl
 import com.tk.quicksearch.search.searchHistory.RecentSearchEntry
+import com.tk.quicksearch.search.searchHistory.SearchHistoryTab
 import com.tk.quicksearch.search.searchHistory.SearchHistorySection
 import com.tk.quicksearch.searchEngines.*
 import com.tk.quicksearch.searchEngines.compact.NoResultsSearchEngineCards
@@ -91,6 +92,8 @@ fun ContentLayout(
     onGeminiModelInfoClick: () -> Unit = {},
     onSearchHistoryExpandedChange: (Boolean) -> Unit = {},
     searchHistoryCollapseRequestKey: Int = 0,
+    searchHistorySelectedTab: SearchHistoryTab = SearchHistoryTab.SEARCHES,
+    onSearchHistorySelectedTabChange: (SearchHistoryTab) -> Unit = {},
     onOpenPermissionsSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -555,6 +558,8 @@ fun ContentLayout(
                                     effectiveShowWallpaperBackground,
                                 isOverlayPresentation = isOverlayPresentation,
                                 showInlineCollapseButton = false,
+                                selectedTab = searchHistorySelectedTab,
+                                onSelectedTabChange = onSearchHistorySelectedTabChange,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

@@ -3,12 +3,14 @@ package com.tk.quicksearch.search.searchHistory
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +27,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,15 +38,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -86,6 +95,8 @@ private const val QUERY_ROW_VERTICAL_PADDING = 10
 private const val SETTINGS_HORIZONTAL_PADDING = 16
 private const val SETTINGS_VERTICAL_PADDING = 4
 private const val SHORTCUT_VERTICAL_PADDING = 4
+private const val SEARCH_HISTORY_TAB_SWIPE_THRESHOLD_PX = 64f
+private const val SEARCH_HISTORY_TAB_ROW_HEIGHT = 56
 
 @Composable
 fun SearchHistorySection(
@@ -126,6 +137,8 @@ fun SearchHistorySection(
     isOverlayPresentation: Boolean = false,
     alwaysExpanded: Boolean = false,
     showInlineCollapseButton: Boolean = true,
+    selectedTab: SearchHistoryTab? = null,
+    onSelectedTabChange: (SearchHistoryTab) -> Unit = {},
 ) {
     val overlayCardColor = LocalOverlayResultCardColor.current
     val overlayDividerColor = LocalOverlayDividerColor.current
@@ -134,15 +147,34 @@ fun SearchHistorySection(
     val expanded = alwaysExpanded || (isExpanded ?: localExpanded)
     var showClearAllConfirmation by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val canExpand = !alwaysExpanded && items.size > SearchScreenConstants.INITIAL_RESULT_COUNT
     val scrollState = rememberScrollState()
     var lastCollapseRequestKey by remember { mutableStateOf(collapseRequestKey) }
+    var localSelectedTab by rememberSaveable { mutableStateOf(SearchHistoryTab.SEARCHES) }
+    val activeSelectedTab = selectedTab ?: localSelectedTab
+    val queryItems = items.filterIsInstance<RecentSearchItem.Query>()
+    val openedItems = items.filterNot { it is RecentSearchItem.Query }
+    val selectedTabItems =
+        when (activeSelectedTab) {
+            SearchHistoryTab.RECENTLY_OPENED -> openedItems
+            else -> queryItems
+        }
+    val canSwitchTabs = queryItems.isNotEmpty() && openedItems.isNotEmpty()
+    val canExpand =
+        !alwaysExpanded &&
+            (selectedTabItems.size > SearchScreenConstants.INITIAL_RESULT_COUNT || canSwitchTabs)
 
     fun updateExpanded(value: Boolean) {
         if (isExpanded == null) {
             localExpanded = value
         }
         onExpandedChange(value)
+    }
+
+    fun updateSelectedTab(tab: SearchHistoryTab) {
+        if (selectedTab == null) {
+            localSelectedTab = tab
+        }
+        onSelectedTabChange(tab)
     }
 
     BackHandler(enabled = expanded) {
@@ -183,20 +215,48 @@ fun SearchHistorySection(
             overlayCardColor = overlayCardColor,
         ) { contentModifier, cardState ->
             val displayAsExpanded = cardState.displayAsExpanded
+            val activeItems =
+                if (displayAsExpanded) {
+                    when (activeSelectedTab) {
+                        SearchHistoryTab.RECENTLY_OPENED -> openedItems
+                        else -> queryItems
+                    }
+                } else {
+                    selectedTabItems
+                }
             val displayItems =
                 if (displayAsExpanded) {
-                    items
+                    activeItems
                 } else {
-                    items.take(SearchScreenConstants.INITIAL_RESULT_COUNT)
+                    activeItems.take(SearchScreenConstants.INITIAL_RESULT_COUNT)
                 }
             val listModifier =
                 if (displayAsExpanded) {
-                    contentModifier.verticalScroll(scrollState)
+                    contentModifier
+                        .searchHistoryTabSwipe(
+                            enabled = canSwitchTabs,
+                            selectedTab = activeSelectedTab,
+                            onTabSelected = ::updateSelectedTab,
+                        ).verticalScroll(scrollState)
                 } else {
                     contentModifier
                 }
             Column(modifier = listModifier) {
-                val showClearAllHistory = displayAsExpanded && onClearRecentItems != null
+                if (displayAsExpanded) {
+                    SearchHistoryTabs(
+                        selectedTab = activeSelectedTab,
+                        onTabSelected = ::updateSelectedTab,
+                        showWallpaperBackground = showWallpaperBackground,
+                    )
+                    HorizontalDivider(
+                        color = dividerColor(showWallpaperBackground, overlayDividerColor),
+                    )
+                }
+
+                val showClearAllHistory =
+                    displayAsExpanded &&
+                        onClearRecentItems != null &&
+                        displayItems.isNotEmpty()
                 displayItems.forEachIndexed { index, item ->
                     val showTipBelowFirstItem =
                         !displayAsExpanded &&
@@ -290,6 +350,104 @@ fun SearchHistorySection(
                 onDismiss = { showClearAllConfirmation = false },
             )
         }
+    }
+}
+
+@Composable
+private fun SearchHistoryTabs(
+    selectedTab: SearchHistoryTab,
+    onTabSelected: (SearchHistoryTab) -> Unit,
+    showWallpaperBackground: Boolean,
+) {
+    val contentColor =
+        if (showWallpaperBackground) {
+            AppColors.WallpaperTextPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+    val containerColor =
+        if (showWallpaperBackground) {
+            Color.Transparent
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+
+    PrimaryTabRow(
+        selectedTabIndex = selectedTab.ordinal,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.fillMaxWidth(),
+        indicator = {
+            TabRowDefaults.PrimaryIndicator(
+                modifier = Modifier.tabIndicatorOffset(selectedTab.ordinal),
+                width = Dp.Unspecified,
+                height = 2.dp,
+                color = contentColor.copy(alpha = 0.42f),
+            )
+        },
+        divider = {
+            HorizontalDivider(color = contentColor.copy(alpha = 0.10f))
+        },
+    ) {
+        Tab(
+            selected = selectedTab == SearchHistoryTab.SEARCHES,
+            onClick = { onTabSelected(SearchHistoryTab.SEARCHES) },
+            modifier = Modifier.height(SEARCH_HISTORY_TAB_ROW_HEIGHT.dp),
+            text = {
+                Text(
+                    text = stringResource(R.string.search_history_tab_searches),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+        )
+        Tab(
+            selected = selectedTab == SearchHistoryTab.RECENTLY_OPENED,
+            onClick = { onTabSelected(SearchHistoryTab.RECENTLY_OPENED) },
+            modifier = Modifier.height(SEARCH_HISTORY_TAB_ROW_HEIGHT.dp),
+            text = {
+                Text(
+                    text = stringResource(R.string.search_history_tab_recently_opened),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+        )
+    }
+}
+
+private fun Modifier.searchHistoryTabSwipe(
+    enabled: Boolean,
+    selectedTab: SearchHistoryTab,
+    onTabSelected: (SearchHistoryTab) -> Unit,
+): Modifier {
+    if (!enabled) return this
+    return pointerInput(selectedTab) {
+        var totalHorizontalDrag = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { totalHorizontalDrag = 0f },
+            onHorizontalDrag = { change, dragAmount ->
+                totalHorizontalDrag += dragAmount
+                change.consume()
+            },
+            onDragEnd = {
+                when {
+                    totalHorizontalDrag <= -SEARCH_HISTORY_TAB_SWIPE_THRESHOLD_PX &&
+                        selectedTab != SearchHistoryTab.RECENTLY_OPENED ->
+                        onTabSelected(SearchHistoryTab.RECENTLY_OPENED)
+
+                    totalHorizontalDrag >= SEARCH_HISTORY_TAB_SWIPE_THRESHOLD_PX &&
+                        selectedTab != SearchHistoryTab.SEARCHES ->
+                        onTabSelected(SearchHistoryTab.SEARCHES)
+                }
+                totalHorizontalDrag = 0f
+            },
+            onDragCancel = { totalHorizontalDrag = 0f },
+        )
     }
 }
 

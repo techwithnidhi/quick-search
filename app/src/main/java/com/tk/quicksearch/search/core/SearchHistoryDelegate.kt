@@ -27,6 +27,7 @@ internal class SearchHistoryDelegate(
     private val calendarRepository: CalendarRepository,
     private val notesRepository: NotesRepository,
     private val featureStateProvider: () -> SearchFeatureState,
+    private val currentQueryProvider: () -> String,
     private val updateResultsState: ((SearchResultsState) -> SearchResultsState) -> Unit,
     private val updateUiState: ((SearchUiState) -> SearchUiState) -> Unit,
 ) {
@@ -37,7 +38,13 @@ internal class SearchHistoryDelegate(
                 return@launch
             }
 
-            val entries = userPreferences.getRecentItems().take(MAX_RECENT_ITEMS)
+            val queryEntries =
+                userPreferences
+                    .getRecentItems()
+                    .filterIsInstance<RecentSearchEntry.Query>()
+                    .take(MAX_RECENT_ITEMS)
+            val openedEntries = userPreferences.getRecentResultOpens().take(MAX_RECENT_ITEMS)
+            val entries = queryEntries + openedEntries
 
             val contactIds =
                 entries.filterIsInstance<RecentSearchEntry.Contact>()
@@ -50,6 +57,10 @@ internal class SearchHistoryDelegate(
                 entries.filterIsInstance<RecentSearchEntry.AppShortcut>()
                     .map { it.shortcutKey }
                     .toSet()
+            val appSettingIds =
+                entries.filterIsInstance<RecentSearchEntry.AppSetting>()
+                    .map { it.id }
+                    .toSet()
             val noteIds =
                 entries.filterIsInstance<RecentSearchEntry.Note>()
                     .map { it.noteId }
@@ -61,6 +72,7 @@ internal class SearchHistoryDelegate(
                 fileRepository.getFilesByUris(fileUris).associateBy { it.uri.toString() }
             val settingsById = settingsSearchHandler.getSettingsByIds(settingIds)
             val shortcutsByKey = appShortcutSearchHandler.getShortcutsByKeys(shortcutKeys)
+            val appSettingsById = appSettingsSearchHandler.getSettingsByIds(appSettingIds)
             val notesById =
                 noteIds
                     .mapNotNull { notesRepository.getNoteById(it) }
@@ -106,6 +118,11 @@ internal class SearchHistoryDelegate(
                                     }
                                 }
                             }
+                            is RecentSearchEntry.AppSetting -> {
+                                appSettingsById[entry.id]?.let {
+                                    add(RecentSearchItem.AppSetting(entry, it))
+                                }
+                            }
                             is RecentSearchEntry.Note -> {
                                 notesById[entry.noteId]?.let {
                                     if (entry.noteId !in pinnedNoteIds) {
@@ -113,7 +130,6 @@ internal class SearchHistoryDelegate(
                                     }
                                 }
                             }
-                            is RecentSearchEntry.AppSetting -> Unit
                         }
                     }
                 }
@@ -224,12 +240,14 @@ internal class SearchHistoryDelegate(
 
     fun trackRecentContactTap(contactInfo: ContactInfo) {
         scope.launch(Dispatchers.IO) {
+            recordQueryBeforeOpen()
             userPreferences.addRecentItem(RecentSearchEntry.Contact(contactInfo.contactId))
         }
     }
 
     fun trackRecentSettingTap(settingId: String) {
         scope.launch(Dispatchers.IO) {
+            recordQueryBeforeOpen()
             userPreferences.addRecentItem(RecentSearchEntry.Setting(settingId))
         }
     }
@@ -239,6 +257,7 @@ internal class SearchHistoryDelegate(
         lockedAliasSearchSection: SearchSection?,
     ) {
         scope.launch(Dispatchers.IO) {
+            recordQueryBeforeOpen()
             userPreferences.addRecentItem(RecentSearchEntry.AppSetting(settingId))
             refreshAliasRecentItems(lockedAliasSearchSection)
         }
@@ -247,7 +266,15 @@ internal class SearchHistoryDelegate(
     fun trackRecentNoteTap(noteInfo: NoteInfo) {
         scope.launch(Dispatchers.IO) {
             if (notesRepository.isQuickNote(noteInfo.noteId)) return@launch
+            recordQueryBeforeOpen()
             userPreferences.addRecentItem(RecentSearchEntry.Note(noteInfo.noteId))
+        }
+    }
+
+    private fun recordQueryBeforeOpen() {
+        val query = currentQueryProvider().trim()
+        if (query.isNotEmpty()) {
+            userPreferences.addRecentItem(RecentSearchEntry.Query(query))
         }
     }
 

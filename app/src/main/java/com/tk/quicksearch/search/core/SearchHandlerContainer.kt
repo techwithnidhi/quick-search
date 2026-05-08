@@ -301,6 +301,7 @@ internal class SearchHandlerContainer(
                 application = application,
                 userPreferences = userPreferences,
                 settingsSearchHandler = settingsSearchHandler,
+                currentQueryProvider = { getCurrentState().query },
                 onRequestAiSearch = onRequestAiSearch,
                 onClearQuery = clearQuery,
                 onExternalNavigation = externalNavigation,

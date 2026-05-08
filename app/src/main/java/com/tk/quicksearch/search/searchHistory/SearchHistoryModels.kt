@@ -8,6 +8,11 @@ import com.tk.quicksearch.search.models.DeviceFile
 import com.tk.quicksearch.search.models.NoteInfo
 import org.json.JSONObject
 
+enum class SearchHistoryTab {
+    SEARCHES,
+    RECENTLY_OPENED,
+}
+
 sealed class RecentSearchEntry {
     abstract val stableKey: String
 

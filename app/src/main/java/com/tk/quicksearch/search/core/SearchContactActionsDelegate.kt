@@ -11,6 +11,7 @@ import com.tk.quicksearch.search.data.ContactRepository
 import com.tk.quicksearch.search.data.UserAppPreferences
 import com.tk.quicksearch.search.models.ContactInfo
 import com.tk.quicksearch.search.models.ContactMethod
+import com.tk.quicksearch.search.searchHistory.RecentSearchEntry
 import com.tk.quicksearch.search.utils.PhoneNumberUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ internal class SearchContactActionsDelegate(
     private val contactActionHandler: ContactActionHandler,
     private val permissionStateProvider: () -> SearchPermissionState,
     private val aiSearchActiveProvider: () -> Boolean,
+    private val currentQueryProvider: () -> String,
     private val updateResultsState: ((SearchResultsState) -> SearchResultsState) -> Unit,
     private val updateConfigState: ((SearchUiConfigState) -> SearchUiConfigState) -> Unit,
     private val showToastRes: (Int) -> Unit,
@@ -272,10 +274,12 @@ internal class SearchContactActionsDelegate(
     }
 
     fun callContact(contactInfo: ContactInfo) {
+        recordQueryBeforeContactOpen()
         contactActionHandler.callContact(contactInfo, trackHistory = aiSearchActiveProvider().not())
     }
 
     fun smsContact(contactInfo: ContactInfo) {
+        recordQueryBeforeContactOpen()
         contactActionHandler.smsContact(contactInfo, trackHistory = aiSearchActiveProvider().not())
     }
 
@@ -283,11 +287,19 @@ internal class SearchContactActionsDelegate(
         contactInfo: ContactInfo,
         method: ContactMethod,
     ) {
+        recordQueryBeforeContactOpen()
         contactActionHandler.handleContactMethod(
             contactInfo,
             method,
             trackHistory = aiSearchActiveProvider().not(),
         )
+    }
+
+    private fun recordQueryBeforeContactOpen() {
+        val query = currentQueryProvider().trim()
+        if (query.isNotEmpty()) {
+            userPreferences.addRecentItem(RecentSearchEntry.Query(query))
+        }
     }
 
     fun showContactMethodsBottomSheet(contactInfo: ContactInfo) {

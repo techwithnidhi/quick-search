@@ -1101,14 +1101,20 @@ class UserAppPreferences(
             recentSearchesPreferences.getRecentItems()
 
     fun addRecentItem(entry: com.tk.quicksearch.search.searchHistory.RecentSearchEntry) {
-        recentSearchesPreferences.addRecentItem(entry)
-        recentResultOpensPreferences.addRecentResultOpen(entry)
+        if (entry is com.tk.quicksearch.search.searchHistory.RecentSearchEntry.Query) {
+            recentSearchesPreferences.addRecentItem(entry)
+        } else {
+            recentResultOpensPreferences.addRecentResultOpen(entry)
+        }
     }
 
     fun getRecentResultOpens(): List<com.tk.quicksearch.search.searchHistory.RecentSearchEntry> =
             recentResultOpensPreferences.getRecentResultOpens()
 
-    fun clearRecentQueries() = recentSearchesPreferences.clearRecentQueries()
+    fun clearRecentQueries() {
+        recentSearchesPreferences.clearRecentQueries()
+        recentResultOpensPreferences.clearRecentResultOpens()
+    }
 
     fun deleteRecentItem(entry: com.tk.quicksearch.search.searchHistory.RecentSearchEntry) {
         recentSearchesPreferences.deleteRecentItem(entry)

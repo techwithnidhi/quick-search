@@ -200,6 +200,8 @@
     <string name="action_unpin_app">Unpin</string>
     <string name="exclude_marker"> excluded from </string>
     <string name="permission_action_manage_android">Manage in Android settings</string>
+    <string name="search_history_tab_searches">Searches</string>
+    <string name="search_history_tab_recently_opened">Results</string>
     <string name="search_history_tip_link">settings</string>
     <string name="search_history_tip_message">You can disable search history in</string>
     <string name="toast_excluded_from_results">%1$s excluded from results</string>

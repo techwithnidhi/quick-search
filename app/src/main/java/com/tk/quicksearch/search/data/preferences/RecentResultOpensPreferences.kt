@@ -44,6 +44,14 @@ class RecentResultOpensPreferences(
         )
     }
 
+    fun clearRecentResultOpens() {
+        PreferenceUtils.setStringListPref(
+            sessionPrefs,
+            BasePreferences.KEY_RECENT_RESULT_OPENS,
+            emptyList<String>(),
+        )
+    }
+
     private fun isRankableEntry(entry: RecentSearchEntry): Boolean =
         entry is RecentSearchEntry.Contact ||
             entry is RecentSearchEntry.File ||

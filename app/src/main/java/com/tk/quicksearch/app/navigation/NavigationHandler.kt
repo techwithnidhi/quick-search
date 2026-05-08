@@ -23,6 +23,7 @@ class NavigationHandler(
     private val application: Application,
     private val userPreferences: UserAppPreferences,
     private val settingsSearchHandler: DeviceSettingsSearchHandler,
+    private val currentQueryProvider: () -> String,
     private val onRequestAiSearch: (String, Boolean) -> Unit,
     private val onClearQuery: () -> Unit,
     private val onExternalNavigation: () -> Unit,
@@ -182,6 +183,7 @@ class NavigationHandler(
     }
 
     fun openFile(deviceFile: DeviceFile) {
+        recordQueryBeforeResultOpen()
         userPreferences.addRecentItem(RecentSearchEntry.File(deviceFile.uri.toString()))
         onClearQuery()
         mainHandler.post {
@@ -201,6 +203,7 @@ class NavigationHandler(
     }
 
     fun openSetting(setting: DeviceSetting) {
+        recordQueryBeforeResultOpen()
         settingsSearchHandler.openSetting(setting)
         onClearQuery()
     }
@@ -212,6 +215,7 @@ class NavigationHandler(
         if (!success) {
             return
         }
+        recordQueryBeforeResultOpen()
         userPreferences.addRecentItem(RecentSearchEntry.Contact(contactInfo.contactId))
         // Always clear query after opening contact
         onClearQuery()
@@ -233,5 +237,12 @@ class NavigationHandler(
             }
         }
         onClearQuery()
+    }
+
+    private fun recordQueryBeforeResultOpen() {
+        val query = currentQueryProvider().trim()
+        if (query.isNotEmpty()) {
+            userPreferences.addRecentItem(RecentSearchEntry.Query(query))
+        }
     }
 }

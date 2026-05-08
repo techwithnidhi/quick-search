@@ -71,6 +71,7 @@ class SearchViewModelNavigationApiDelegate internal constructor(
     private val userPreferences: com.tk.quicksearch.search.data.UserAppPreferences,
     private val permissionStateProvider: () -> SearchPermissionState,
     private val resultsStateProvider: () -> SearchResultsState,
+    private val currentQueryProvider: () -> String,
     private val onQueryChange: (String) -> Unit,
     private val updateResultsState: ((SearchResultsState) -> SearchResultsState) -> Unit,
     private val onNavigationTriggered: () -> Unit,
@@ -133,6 +134,10 @@ class SearchViewModelNavigationApiDelegate internal constructor(
         if (error != null) {
             showToastText(error)
         } else {
+            val query = currentQueryProvider().trim()
+            if (query.isNotEmpty()) {
+                userPreferences.addRecentItem(RecentSearchEntry.Query(query))
+            }
             userPreferences.addRecentItem(RecentSearchEntry.AppShortcut(shortcutKey(shortcut)))
             onNavigationTriggered()
         }

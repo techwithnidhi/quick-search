@@ -415,6 +415,8 @@ data class SearchUiState(
         val searchEnginesState: SearchEnginesVisibility = SearchEnginesVisibility.Hidden,
         // App results
         val recentApps: List<AppInfo> = emptyList(),
+        val newOrUpdatedApps: List<AppInfo> = emptyList(),
+        val mostUsedApps: List<AppInfo> = emptyList(),
         val searchResults: List<AppInfo> = emptyList(),
         // Internal staging buffer for app results (normally unused in write-through flow).
         // Not read by any UI composable directly.
@@ -529,6 +531,7 @@ data class SearchUiState(
         val themedIconsEnabled: Boolean = true,
         val deviceThemeEnabled: Boolean = false,
         val appSuggestionsEnabled: Boolean = true,
+        val selectedAppSuggestionTab: AppSuggestionTabType = AppSuggestionTabType.RECENTS,
         // Section visibility preferences
         val disabledSections: Set<SearchSection> = emptySet(),
         // Web suggestions
@@ -614,6 +617,8 @@ fun SearchUiState(
                 // ── SearchResultsState ────────────────────────────────────────────
                 query = results.query,
                 recentApps = results.recentApps,
+                newOrUpdatedApps = results.newOrUpdatedApps,
+                mostUsedApps = results.mostUsedApps,
                 searchResults = results.searchResults,
                 pendingSearchResults = results.pendingSearchResults,
                 pinnedApps = results.pinnedApps,
@@ -762,6 +767,7 @@ fun SearchUiState(
                 themedIconsEnabled = config.themedIconsEnabled,
                 deviceThemeEnabled = config.deviceThemeEnabled,
                 appSuggestionsEnabled = config.appSuggestionsEnabled,
+                selectedAppSuggestionTab = config.selectedAppSuggestionTab,
                 selectedIconPackPackage = config.selectedIconPackPackage,
                 availableIconPacks = config.availableIconPacks,
                 maskUnsupportedIconPackIcons = config.maskUnsupportedIconPackIcons,

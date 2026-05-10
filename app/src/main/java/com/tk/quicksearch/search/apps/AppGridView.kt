@@ -1,19 +1,30 @@
 package com.tk.quicksearch.search.apps
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,14 +55,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tk.quicksearch.R
 import com.tk.quicksearch.search.common.AddToHomeHandler
 import com.tk.quicksearch.search.core.AppIconShape
+import com.tk.quicksearch.search.core.AppSuggestionTabType
 import com.tk.quicksearch.search.core.AppTheme
 import com.tk.quicksearch.search.core.StartupPhase
 import com.tk.quicksearch.search.data.AppShortcutRepository.StaticShortcut
@@ -69,8 +83,11 @@ import com.tk.quicksearch.shared.util.getAppGridColumns
 import com.tk.quicksearch.shared.util.hapticConfirm
 
 private const val ROW_COUNT = 2
+private const val TabSlideOffsetPx = 64
 private const val SuggestionsEnterDurationMillis = 320
 private const val SuggestionsEnterOffsetDp = 12f
+private const val SuggestionTabInactiveAlpha = 0.34f
+private const val SuggestionTabSwipeThresholdPx = 48f
 private val AppGridRowSpacing = DesignTokens.SpacingXSmall
 private val RegularAppIconSize = DesignTokens.IconSizeXLarge - DesignTokens.SpacingXXSmall
 private val TopResultIndicatorTopPadding = 0.dp
@@ -87,6 +104,12 @@ private enum class AppIconDisplayMode {
     OVERLAY,
     REGULAR,
 }
+
+private data class AppSuggestionTab(
+        val type: AppSuggestionTabType,
+        val title: String,
+        val apps: List<AppInfo>,
+)
 
 /** Data class containing all app actions to reduce parameter count in composables. */
 private data class AppActions(
@@ -114,8 +137,15 @@ private data class AppState(
 @Composable
 fun AppGridView(
         apps: List<AppInfo>,
+        pinnedAndRecentApps: List<AppInfo>,
+        pinnedApps: List<AppInfo>,
+        newOrUpdatedApps: List<AppInfo>,
+        mostUsedApps: List<AppInfo>,
         appShortcuts: List<StaticShortcut>,
         isSearching: Boolean,
+        hasUsagePermission: Boolean,
+        selectedSuggestionTab: AppSuggestionTabType,
+        onSuggestionTabSelected: (AppSuggestionTabType) -> Unit,
         hasAppResults: Boolean,
         onAppClick: (AppInfo) -> Unit,
         onAppInfoClick: (AppInfo) -> Unit,
@@ -146,7 +176,75 @@ fun AppGridView(
         onGridAppeared: (() -> Unit)? = null,
         suppressSuggestionsEnterAnimation: Boolean = false,
 ) {
-    val context = LocalContext.current
+    val pinnedTitle = stringResource(R.string.app_suggestions_tab_pinned)
+    val recentsTitle = stringResource(R.string.app_suggestions_tab_recent)
+    val newUpdatedTitle = stringResource(R.string.app_suggestions_tab_new_updated)
+    val mostUsedTitle = stringResource(R.string.app_suggestions_tab_most_used)
+    val suggestionTabs =
+            remember(
+                    hasUsagePermission,
+                    isSearching,
+                    newUpdatedTitle,
+                    pinnedTitle,
+                    recentsTitle,
+                    mostUsedTitle,
+                    pinnedApps,
+                    newOrUpdatedApps,
+                    pinnedAndRecentApps,
+                    mostUsedApps,
+            ) {
+                if (isSearching) return@remember emptyList()
+                if (hasUsagePermission) {
+                    buildList {
+                        add(AppSuggestionTab(AppSuggestionTabType.NEW_UPDATED, newUpdatedTitle, newOrUpdatedApps))
+                        if (pinnedApps.isNotEmpty()) {
+                            add(AppSuggestionTab(AppSuggestionTabType.PINNED, pinnedTitle, pinnedApps))
+                        }
+                        add(AppSuggestionTab(AppSuggestionTabType.RECENTS, recentsTitle, pinnedAndRecentApps))
+                        add(AppSuggestionTab(AppSuggestionTabType.MOST_USED, mostUsedTitle, mostUsedApps))
+                    }
+                } else if (pinnedApps.isNotEmpty()) {
+                    listOf(
+                            AppSuggestionTab(AppSuggestionTabType.PINNED, pinnedTitle, pinnedApps),
+                            AppSuggestionTab(AppSuggestionTabType.RECENTS, recentsTitle, pinnedAndRecentApps),
+                    )
+                } else {
+                    emptyList()
+                }
+            }
+    val selectedSuggestionTabIndex =
+            remember(suggestionTabs, selectedSuggestionTab) {
+                val preferredIndex = suggestionTabs.indexOfFirst { it.type == selectedSuggestionTab }
+                if (preferredIndex >= 0) {
+                    preferredIndex
+                } else {
+                    suggestionTabs.indexOfFirst { it.type == AppSuggestionTabType.RECENTS }
+                            .takeIf { it >= 0 }
+                            ?: 0
+                }
+            }
+    fun selectSuggestionTab(index: Int) {
+        suggestionTabs.getOrNull(index)?.let { tab ->
+            onSuggestionTabSelected(tab.type)
+        }
+    }
+    val minSuggestionGridItems = (rowCount * getAppGridColumns(phoneColumnOverride)).coerceAtLeast(1)
+    val suggestionFallbackApps = remember(pinnedAndRecentApps, apps) { pinnedAndRecentApps + apps }
+    val activeApps =
+            if (suggestionTabs.isNotEmpty()) {
+                val selectedTab = suggestionTabs[selectedSuggestionTabIndex]
+                if (selectedTab.type == AppSuggestionTabType.PINNED) {
+                    selectedTab.apps
+                } else {
+                fillSuggestionGridApps(
+                        primaryApps = selectedTab.apps,
+                        fallbackApps = suggestionFallbackApps,
+                        minItems = minSuggestionGridItems,
+                )
+                }
+            } else {
+                apps
+            }
     val shortcutsByPackage =
             remember(appShortcuts, disabledShortcutIds) {
                 appShortcuts
@@ -156,10 +254,10 @@ fun AppGridView(
                         }
                         .groupBy { it.packageName }
             }
-    val waitForAppIcons = apps.isNotEmpty()
+    val waitForAppIcons = activeApps.isNotEmpty()
     val areAppIconsLoaded =
             if (waitForAppIcons) {
-                apps.all { app ->
+                activeApps.all { app ->
                     val iconResult =
                             rememberAppIcon(
                                     packageName = app.packageName,
@@ -184,9 +282,35 @@ fun AppGridView(
     val suggestionsAlpha = remember { Animatable(initialSuggestionsAlpha) }
     val suggestionsTranslationYDp = remember { Animatable(initialSuggestionsOffset) }
     val density = LocalDensity.current
+    val tabSwipeModifier =
+            if (suggestionTabs.size > 1) {
+                Modifier.pointerInput(suggestionTabs, selectedSuggestionTabIndex) {
+                    var dragAmount = 0f
+                    detectHorizontalDragGestures(
+                            onDragStart = { dragAmount = 0f },
+                            onHorizontalDrag = { _, dragDelta ->
+                                dragAmount += dragDelta
+                            },
+                            onDragEnd = {
+                                when {
+                                    dragAmount > SuggestionTabSwipeThresholdPx &&
+                                            selectedSuggestionTabIndex > 0 ->
+                                            selectSuggestionTab(selectedSuggestionTabIndex - 1)
+                                    dragAmount < -SuggestionTabSwipeThresholdPx &&
+                                            selectedSuggestionTabIndex < suggestionTabs.lastIndex ->
+                                            selectSuggestionTab(selectedSuggestionTabIndex + 1)
+                                }
+                                dragAmount = 0f
+                            },
+                            onDragCancel = { dragAmount = 0f },
+                    )
+                }
+            } else {
+                Modifier
+            }
 
     Column(
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().then(tabSwipeModifier),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(AppGridRowSpacing),
     ) {
@@ -219,39 +343,206 @@ fun AppGridView(
 
         if (showAppGrid) {
             gridHasBeenVisible = true
-            AppGrid(
-                    modifier = Modifier.graphicsLayer {
-                        alpha = suggestionsAlpha.value
-                        translationY = with(density) { suggestionsTranslationYDp.value.dp.toPx() }
-                    },
-                    apps = apps,
-                    isSearching = isSearching,
-                    onAppClick = onAppClick,
-                    onAppInfoClick = onAppInfoClick,
-                    onUninstallClick = onUninstallClick,
-                    onHideApp = onHideApp,
-                    onPinApp = onPinApp,
-                    onUnpinApp = onUnpinApp,
-                    onNicknameClick = onNicknameClick,
-                    onTriggerClick = onTriggerClick,
-                    getAppNickname = getAppNickname,
-                    getAppTrigger = getAppTrigger,
-                    pinnedPackageNames = pinnedPackageNames,
-                    shortcutsByPackage = shortcutsByPackage,
-                    rowCount = rowCount,
-                    phoneColumnOverride = phoneColumnOverride,
-                    iconPackPackage = iconPackPackage,
-                    showAppLabels = showAppLabels,
-                    oneHandedMode = oneHandedMode,
-                    isOverlayPresentation = isOverlayPresentation,
-                    predictedTarget = predictedTarget,
-                    suppressTopResultIndicator = suppressTopResultIndicator,
-                    appIconShape = appIconShape,
-                    themedIconsEnabled = themedIconsEnabled,
-                    showWallpaperBackground = showWallpaperBackground,
-            )
+            if (suggestionTabs.size > 1) {
+                AppSuggestionTabStrip(
+                        tabs = suggestionTabs,
+                        selectedIndex = selectedSuggestionTabIndex,
+                        onSelectedIndexChange = ::selectSuggestionTab,
+                )
+            }
+            val baseGridModifier = Modifier.graphicsLayer {
+                alpha = suggestionsAlpha.value
+                translationY = with(density) { suggestionsTranslationYDp.value.dp.toPx() }
+            }
+            if (suggestionTabs.size > 1 && !isSearching) {
+                AnimatedContent(
+                        targetState = selectedSuggestionTabIndex,
+                        transitionSpec = {
+                            val movingForward = targetState > initialState
+                            val stiffness = Spring.StiffnessMediumLow
+                            if (movingForward) {
+                                slideInHorizontally(
+                                        initialOffsetX = { TabSlideOffsetPx },
+                                        animationSpec = spring(stiffness = stiffness),
+                                ) + fadeIn() togetherWith
+                                        slideOutHorizontally(
+                                                targetOffsetX = { -TabSlideOffsetPx },
+                                                animationSpec = spring(stiffness = stiffness),
+                                        ) + fadeOut()
+                            } else {
+                                slideInHorizontally(
+                                        initialOffsetX = { -TabSlideOffsetPx },
+                                        animationSpec = spring(stiffness = stiffness),
+                                ) + fadeIn() togetherWith
+                                        slideOutHorizontally(
+                                                targetOffsetX = { TabSlideOffsetPx },
+                                                animationSpec = spring(stiffness = stiffness),
+                                        ) + fadeOut()
+                            }
+                        },
+                        label = "appSuggestionTabSlide",
+                ) { selectedIndex ->
+                    val selectedTab = suggestionTabs[selectedIndex]
+                    AppGrid(
+                            modifier = baseGridModifier,
+                            apps =
+                                    if (selectedTab.type == AppSuggestionTabType.PINNED) {
+                                        selectedTab.apps
+                                    } else {
+                                        fillSuggestionGridApps(
+                                                primaryApps = selectedTab.apps,
+                                                fallbackApps = suggestionFallbackApps,
+                                                minItems = minSuggestionGridItems,
+                                        )
+                                    },
+                            isSearching = isSearching,
+                            onAppClick = onAppClick,
+                            onAppInfoClick = onAppInfoClick,
+                            onUninstallClick = onUninstallClick,
+                            onHideApp = onHideApp,
+                            onPinApp = onPinApp,
+                            onUnpinApp = onUnpinApp,
+                            onNicknameClick = onNicknameClick,
+                            onTriggerClick = onTriggerClick,
+                            getAppNickname = getAppNickname,
+                            getAppTrigger = getAppTrigger,
+                            pinnedPackageNames = pinnedPackageNames,
+                            shortcutsByPackage = shortcutsByPackage,
+                            rowCount = rowCount,
+                            phoneColumnOverride = phoneColumnOverride,
+                            iconPackPackage = iconPackPackage,
+                            showAppLabels = showAppLabels,
+                            oneHandedMode = oneHandedMode,
+                            isOverlayPresentation = isOverlayPresentation,
+                            predictedTarget = predictedTarget,
+                            suppressTopResultIndicator = suppressTopResultIndicator,
+                            appIconShape = appIconShape,
+                            themedIconsEnabled = themedIconsEnabled,
+                            showWallpaperBackground = showWallpaperBackground,
+                    )
+                }
+            } else {
+                AppGrid(
+                        modifier = baseGridModifier,
+                        apps = activeApps,
+                        isSearching = isSearching,
+                        onAppClick = onAppClick,
+                        onAppInfoClick = onAppInfoClick,
+                        onUninstallClick = onUninstallClick,
+                        onHideApp = onHideApp,
+                        onPinApp = onPinApp,
+                        onUnpinApp = onUnpinApp,
+                        onNicknameClick = onNicknameClick,
+                        onTriggerClick = onTriggerClick,
+                        getAppNickname = getAppNickname,
+                        getAppTrigger = getAppTrigger,
+                        pinnedPackageNames = pinnedPackageNames,
+                        shortcutsByPackage = shortcutsByPackage,
+                        rowCount = rowCount,
+                        phoneColumnOverride = phoneColumnOverride,
+                        iconPackPackage = iconPackPackage,
+                        showAppLabels = showAppLabels,
+                        oneHandedMode = oneHandedMode,
+                        isOverlayPresentation = isOverlayPresentation,
+                        predictedTarget = predictedTarget,
+                        suppressTopResultIndicator = suppressTopResultIndicator,
+                        appIconShape = appIconShape,
+                        themedIconsEnabled = themedIconsEnabled,
+                        showWallpaperBackground = showWallpaperBackground,
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun AppSuggestionTabStrip(
+        tabs: List<AppSuggestionTab>,
+        selectedIndex: Int,
+        onSelectedIndexChange: (Int) -> Unit,
+) {
+    val activeColor = MaterialTheme.colorScheme.onSurface
+    val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = SuggestionTabInactiveAlpha)
+    val leftTab = tabs.getOrNull(selectedIndex - 1)
+    val rightTab = tabs.getOrNull(selectedIndex + 1)
+
+    Row(
+            modifier =
+                    Modifier
+                            .fillMaxWidth(0.86f)
+                            .padding(bottom = DesignTokens.SpacingXSmall),
+            verticalAlignment = Alignment.CenterVertically,
+    ) {
+        EdgeSuggestionTabLabel(
+                title = leftTab?.title.orEmpty(),
+                color = inactiveColor,
+                alignment = TextAlign.Start,
+                onClick = {
+                    if (selectedIndex > 0) onSelectedIndexChange(selectedIndex - 1)
+                },
+        )
+        Text(
+                text = tabs[selectedIndex].title,
+                modifier = Modifier.weight(1f),
+                color = activeColor,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+        )
+        EdgeSuggestionTabLabel(
+                title = rightTab?.title.orEmpty(),
+                color = inactiveColor,
+                alignment = TextAlign.End,
+                onClick = {
+                    if (selectedIndex < tabs.lastIndex) onSelectedIndexChange(selectedIndex + 1)
+                },
+        )
+    }
+}
+
+@Composable
+private fun RowScope.EdgeSuggestionTabLabel(
+        title: String,
+        color: Color,
+        alignment: TextAlign,
+        onClick: () -> Unit,
+) {
+    Text(
+            text = title,
+            modifier =
+                    Modifier
+                            .weight(1f)
+                            .clickable(onClick = onClick),
+            color = color,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = alignment,
+    )
+}
+
+private fun fillSuggestionGridApps(
+        primaryApps: List<AppInfo>,
+        fallbackApps: List<AppInfo>,
+        minItems: Int,
+): List<AppInfo> {
+    if (primaryApps.size >= minItems) return primaryApps
+
+    val seen = LinkedHashSet<String>(primaryApps.size + fallbackApps.size)
+    val result = ArrayList<AppInfo>(minItems)
+    primaryApps.forEach { app ->
+        if (seen.add(app.launchCountKey())) {
+            result.add(app)
+        }
+    }
+    fallbackApps.forEach { app ->
+        if (result.size >= minItems) return@forEach
+        if (seen.add(app.launchCountKey())) {
+            result.add(app)
+        }
+    }
+    return result
 }
 
 @Composable

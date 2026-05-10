@@ -23,26 +23,7 @@ internal class AppSuggestionSelector(
 
         val suggestions =
             if (hasUsagePermission) {
-                val recentlyOpened = repository.getRecentlyOpenedApps(apps)
-                val topRecent = recentlyOpened.firstOrNull()
-                val recentInstallsExcludingTop =
-                    recentInstalls.filterNot { it.launchCountKey() == topRecent?.launchCountKey() }
-                val excludedPackages =
-                    recentInstallsExcludingTop
-                        .asSequence()
-                        .map { it.launchCountKey() }
-                        .toSet()
-                        .let { packages ->
-                            topRecent?.launchCountKey()?.let { packages + it } ?: packages
-                        }
-                val remainingRecents =
-                    recentlyOpened.filterNot { excludedPackages.contains(it.launchCountKey()) }
-
-                buildList {
-                    topRecent?.let { add(it) }
-                    addAll(recentInstallsExcludingTop)
-                    addAll(remainingRecents)
-                }
+                repository.getRecentlyOpenedApps(apps)
             } else {
                 val appByKey = apps.associateBy { it.launchCountKey() }
                 val recentlyOpened =
@@ -88,6 +69,43 @@ internal class AppSuggestionSelector(
                 .take(remainingSpots)
 
         return suggestions + additionalApps
+    }
+
+    fun selectRecentlyOpenedApps(
+        apps: List<AppInfo>,
+        limit: Int,
+    ): List<AppInfo> =
+        repository
+            .getRecentlyOpenedApps(apps)
+            .filter { it.lastUsedTime > 0L }
+            .take(limit)
+
+    fun selectMostUsedApps(
+        apps: List<AppInfo>,
+        limit: Int,
+    ): List<AppInfo> =
+        apps
+            .sortedWith(
+                compareByDescending<AppInfo> { it.launchCount }
+                    .thenByDescending { it.lastUsedTime }
+                    .thenBy { it.appName.lowercase(Locale.getDefault()) },
+            )
+            .filter { it.launchCount > 0 }
+            .take(limit)
+
+    fun selectNewOrUpdatedApps(
+        apps: List<AppInfo>,
+        limit: Int,
+    ): List<AppInfo> {
+        if (apps.isEmpty() || limit <= 0) return emptyList()
+        val (recentStart, recentEnd) = getRecentInstallWindow()
+        return apps
+            .filter { app ->
+                app.firstInstallTime in recentStart until recentEnd ||
+                    app.lastUpdateTime in recentStart until recentEnd
+            }
+            .sortedByDescending { app -> maxOf(app.firstInstallTime, app.lastUpdateTime) }
+            .take(limit)
     }
 
     private fun getRecentInstallWindow(): Pair<Long, Long> {

@@ -15,6 +15,7 @@ data class AppInfo(
     val isSystemApp: Boolean,
     val userHandleId: Int? = null,
     val componentName: String? = null,
+    val lastUpdateTime: Long = firstInstallTime,
 ) {
     fun launchCountKey(): String =
         if (userHandleId == null) packageName else "$packageName:$userHandleId"

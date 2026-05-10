@@ -3,6 +3,7 @@ package com.tk.quicksearch.search.data
 import android.content.Context
 import android.content.res.Configuration
 import com.tk.quicksearch.search.core.AppIconShape
+import com.tk.quicksearch.search.core.AppSuggestionTabType
 import com.tk.quicksearch.search.core.AppThemeMode
 import com.tk.quicksearch.search.core.BackgroundSource
 import com.tk.quicksearch.search.core.LauncherAppIcon
@@ -52,6 +53,7 @@ class StartupPreferencesFacade(
             val resultHiddenPackages: Set<String>,
             val searchHistoryEnabled: Boolean,
             val appSuggestionsEnabled: Boolean,
+            val selectedAppSuggestionTab: AppSuggestionTabType,
             val showAppLabels: Boolean,
             val appIconShape: AppIconShape,
             val launcherAppIcon: LauncherAppIcon = LauncherAppIcon.DEFAULT,
@@ -382,6 +384,18 @@ class StartupPreferencesFacade(
                         ] as?
                                 Boolean
                                 ?: true,
+                selectedAppSuggestionTab =
+                        (
+                                allPrefs[
+                                        com.tk.quicksearch.search.data.preferences.UiPreferences
+                                                .KEY_SELECTED_APP_SUGGESTION_TAB,
+                                ] as?
+                                        String
+                                )
+                                ?.let { value ->
+                                    runCatching { AppSuggestionTabType.valueOf(value) }.getOrNull()
+                                }
+                                ?: AppSuggestionTabType.RECENTS,
                 showAppLabels =
                         allPrefs[
                                 com.tk.quicksearch.search.data.preferences.UiPreferences
@@ -749,6 +763,18 @@ class StartupPreferencesFacade(
                                 ] as?
                                         Boolean
                                 ?: true,
+                        selectedAppSuggestionTab =
+                                (
+                                        allPrefs[
+                                                com.tk.quicksearch.search.data.preferences.UiPreferences
+                                                        .KEY_SELECTED_APP_SUGGESTION_TAB,
+                                        ] as?
+                                                String
+                                        )
+                                        ?.let { value ->
+                                            runCatching { AppSuggestionTabType.valueOf(value) }.getOrNull()
+                                        }
+                                        ?: AppSuggestionTabType.RECENTS,
                         showAppLabels =
                                 allPrefs[
                                         com.tk.quicksearch.search.data.preferences.UiPreferences

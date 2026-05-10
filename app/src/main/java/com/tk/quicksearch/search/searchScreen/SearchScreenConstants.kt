@@ -44,6 +44,9 @@ internal data class DerivedState(
     val visibleRowCount: Int,
     val visibleAppLimit: Int,
     val displayApps: List<AppInfo>,
+    val pinnedAndRecentApps: List<AppInfo>,
+    val newOrUpdatedApps: List<AppInfo>,
+    val mostUsedApps: List<AppInfo>,
     val pinnedPackageNames: Set<String>,
     val pinnedSettingIds: Set<String>,
     val pinnedAppShortcutIds: Set<String>,
@@ -108,6 +111,24 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
             } else {
                 state.searchResults.take(visibleAppLimit)
             }
+        }
+    val pinnedAndRecentApps =
+        remember(state.recentApps, state.pinnedApps, visibleAppLimit) {
+            val pinnedPackages = state.pinnedApps.map { it.launchCountKey() }.toSet()
+            (
+                state.pinnedApps +
+                    state.recentApps.filterNot {
+                        pinnedPackages.contains(it.launchCountKey())
+                    }
+            ).take(visibleAppLimit)
+        }
+    val newOrUpdatedApps =
+        remember(state.newOrUpdatedApps, visibleAppLimit) {
+            state.newOrUpdatedApps.take(visibleAppLimit)
+        }
+    val mostUsedApps =
+        remember(state.mostUsedApps, visibleAppLimit) {
+            state.mostUsedApps.take(visibleAppLimit)
         }
 
     val pinnedPackageNames =
@@ -212,6 +233,9 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
         visibleRowCount = visibleRowCount,
         visibleAppLimit = visibleAppLimit,
         displayApps = displayApps,
+        pinnedAndRecentApps = pinnedAndRecentApps,
+        newOrUpdatedApps = newOrUpdatedApps,
+        mostUsedApps = mostUsedApps,
         pinnedPackageNames = pinnedPackageNames,
         pinnedSettingIds = pinnedSettingIds,
         pinnedAppShortcutIds = pinnedAppShortcutIds,

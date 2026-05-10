@@ -5,6 +5,8 @@ internal object SearchStateExtractor {
         SearchResultsState(
             query = s.query,
             recentApps = s.recentApps,
+            newOrUpdatedApps = s.newOrUpdatedApps,
+            mostUsedApps = s.mostUsedApps,
             searchResults = s.searchResults,
             pendingSearchResults = s.pendingSearchResults,
             pinnedApps = s.pinnedApps,
@@ -159,6 +161,7 @@ internal object SearchStateExtractor {
             themedIconsEnabled = s.themedIconsEnabled,
             deviceThemeEnabled = s.deviceThemeEnabled,
             appSuggestionsEnabled = s.appSuggestionsEnabled,
+            selectedAppSuggestionTab = s.selectedAppSuggestionTab,
             selectedIconPackPackage = s.selectedIconPackPackage,
             availableIconPacks = s.availableIconPacks,
             maskUnsupportedIconPackIcons = s.maskUnsupportedIconPackIcons,

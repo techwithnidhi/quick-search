@@ -77,12 +77,13 @@ class AppCache(
 
         return runCatching {
             DataInputStream(BufferedInputStream(cacheFile.inputStream())).use { input ->
-                if (input.readInt() != CACHE_FILE_VERSION) return null
+                val version = input.readInt()
+                if (version !in 1..CACHE_FILE_VERSION) return null
                 val appCount = input.readInt()
                 if (appCount <= 0) return null
 
                 List(appCount) {
-                    input.readAppInfo()
+                    input.readAppInfo(version)
                 }
             }
         }.onFailure { exception ->
@@ -115,7 +116,7 @@ class AppCache(
         private const val KEY_APP_LIST = "app_list"
         private const val KEY_LAST_UPDATE = "last_update"
         private const val CACHE_FILE_NAME = "app_cache_v1.bin"
-        private const val CACHE_FILE_VERSION = 1
+        private const val CACHE_FILE_VERSION = 2
 
         // JSON field names
         private const val FIELD_APP_NAME = "appName"
@@ -124,6 +125,7 @@ class AppCache(
         private const val FIELD_TOTAL_TIME_IN_FOREGROUND = "totalTimeInForeground"
         private const val FIELD_LAUNCH_COUNT = "launchCount"
         private const val FIELD_FIRST_INSTALL_TIME = "firstInstallTime"
+        private const val FIELD_LAST_UPDATE_TIME = "lastUpdateTime"
         private const val FIELD_IS_SYSTEM_APP = "isSystemApp"
         private const val FIELD_USER_HANDLE_ID = "userHandleId"
         private const val FIELD_COMPONENT_NAME = "componentName"
@@ -143,21 +145,38 @@ class AppCache(
                     isSystemApp = jsonObject.getBoolean(FIELD_IS_SYSTEM_APP),
                     userHandleId = userHandleId,
                     componentName = jsonObject.optString(FIELD_COMPONENT_NAME).takeIf { it.isNotBlank() },
+                    lastUpdateTime =
+                        jsonObject.optLong(
+                            FIELD_LAST_UPDATE_TIME,
+                            jsonObject.optLong(FIELD_FIRST_INSTALL_TIME, 0L),
+                        ),
                 )
             }
 
-        private fun DataInputStream.readAppInfo(): AppInfo =
-            AppInfo(
-                appName = readUTF(),
-                packageName = readUTF(),
-                lastUsedTime = readLong(),
-                totalTimeInForeground = readLong(),
-                launchCount = readInt(),
-                firstInstallTime = readLong(),
-                isSystemApp = readBoolean(),
-                userHandleId = readNullableInt(),
-                componentName = readNullableString(),
+        private fun DataInputStream.readAppInfo(version: Int): AppInfo {
+            val appName = readUTF()
+            val packageName = readUTF()
+            val lastUsedTime = readLong()
+            val totalTimeInForeground = readLong()
+            val launchCount = readInt()
+            val firstInstallTime = readLong()
+            val isSystemApp = readBoolean()
+            val userHandleId = readNullableInt()
+            val componentName = readNullableString()
+            val lastUpdateTime = if (version >= 2) readLong() else firstInstallTime
+            return AppInfo(
+                appName = appName,
+                packageName = packageName,
+                lastUsedTime = lastUsedTime,
+                totalTimeInForeground = totalTimeInForeground,
+                launchCount = launchCount,
+                firstInstallTime = firstInstallTime,
+                isSystemApp = isSystemApp,
+                userHandleId = userHandleId,
+                componentName = componentName,
+                lastUpdateTime = lastUpdateTime,
             )
+        }
 
         private fun DataOutputStream.writeAppInfo(app: AppInfo) {
             writeUTF(app.appName)
@@ -169,6 +188,7 @@ class AppCache(
             writeBoolean(app.isSystemApp)
             writeNullableInt(app.userHandleId)
             writeNullableString(app.componentName)
+            writeLong(app.lastUpdateTime)
         }
 
         private fun DataInputStream.readNullableInt(): Int? =

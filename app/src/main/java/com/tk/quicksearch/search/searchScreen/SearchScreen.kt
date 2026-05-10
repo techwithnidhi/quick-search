@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import com.tk.quicksearch.R
 import com.tk.quicksearch.shared.ui.theme.LocalImageBackgroundIsDark
 import com.tk.quicksearch.search.contacts.models.ContactCardAction
+import com.tk.quicksearch.search.core.AppSuggestionTabType
 import com.tk.quicksearch.search.core.DirectDialOption
 import com.tk.quicksearch.search.core.SearchTarget
 import com.tk.quicksearch.search.core.SearchUiState
@@ -65,6 +66,7 @@ fun SearchScreen(
     onHideApp: (AppInfo) -> Unit,
     onPinApp: (AppInfo) -> Unit,
     onUnpinApp: (AppInfo) -> Unit,
+    onSuggestionTabSelected: (AppSuggestionTabType) -> Unit,
     onContactClick: (ContactInfo) -> Unit,
     onShowContactMethods: (ContactInfo) -> Unit,
     onDismissContactMethods: () -> Unit,
@@ -208,6 +210,7 @@ fun SearchScreen(
         onHideApp = onHideApp,
         onPinApp = onPinApp,
         onUnpinApp = onUnpinApp,
+        onSuggestionTabSelected = onSuggestionTabSelected,
         onContactClick = onContactClick,
         onShowContactMethods = onShowContactMethods,
         onDismissContactMethods = onDismissContactMethods,

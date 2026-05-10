@@ -7,6 +7,7 @@ import com.tk.quicksearch.search.core.CustomTool
 import com.tk.quicksearch.search.core.MessagingApp
 import com.tk.quicksearch.search.core.BackgroundSource
 import com.tk.quicksearch.search.core.AppTheme
+import com.tk.quicksearch.search.core.AppSuggestionTabType
 import com.tk.quicksearch.search.core.SearchEngine
 import com.tk.quicksearch.search.core.SearchSection
 import com.tk.quicksearch.search.data.preferences.*
@@ -1044,6 +1045,12 @@ class UserAppPreferences(
     fun areAppSuggestionsEnabled(): Boolean = uiPreferences.areAppSuggestionsEnabled()
 
     fun setAppSuggestionsEnabled(enabled: Boolean) = uiPreferences.setAppSuggestionsEnabled(enabled)
+
+    fun getSelectedAppSuggestionTab(): AppSuggestionTabType =
+            uiPreferences.getSelectedAppSuggestionTab()
+
+    fun setSelectedAppSuggestionTab(tab: AppSuggestionTabType) =
+            uiPreferences.setSelectedAppSuggestionTab(tab)
 
     fun shouldShowAppLabels(): Boolean = uiPreferences.shouldShowAppLabels()
 

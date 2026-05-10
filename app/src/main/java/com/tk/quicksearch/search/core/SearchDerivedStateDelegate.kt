@@ -100,10 +100,35 @@ internal class SearchDerivedStateDelegate(
         val suggestedRecents =
             if (suggestionsEnabled) {
                 val recentsSource = visibleAppList.filterNot { pinnedPackages.contains(it.launchCountKey()) }
-                extractSuggestedApps(
-                    apps = recentsSource,
+                if (hasUsagePermission) {
+                    appSuggestionSelector.selectRecentlyOpenedApps(
+                        apps = recentsSource,
+                        limit = getGridItemCount(),
+                    )
+                } else {
+                    extractSuggestedApps(
+                        apps = recentsSource,
+                        limit = getGridItemCount(),
+                        hasUsagePermission = false,
+                    )
+                }
+            } else {
+                emptyList()
+            }
+        val newOrUpdatedApps =
+            if (suggestionsEnabled && hasUsagePermission) {
+                appSuggestionSelector.selectNewOrUpdatedApps(
+                    apps = visibleAppList,
                     limit = getGridItemCount(),
-                    hasUsagePermission = hasUsagePermission,
+                )
+            } else {
+                emptyList()
+            }
+        val mostUsedApps =
+            if (suggestionsEnabled && hasUsagePermission) {
+                appSuggestionSelector.selectMostUsedApps(
+                    apps = visibleAppList,
+                    limit = getGridItemCount(),
                 )
             } else {
                 emptyList()
@@ -150,6 +175,8 @@ internal class SearchDerivedStateDelegate(
             state.copy(
                 allApps = apps,
                 recentApps = recents,
+                newOrUpdatedApps = newOrUpdatedApps,
+                mostUsedApps = mostUsedApps,
                 searchResults = searchResults,
                 pinnedApps = pinnedAppsForSuggestions,
                 suggestionExcludedApps = suggestionHiddenAppList,

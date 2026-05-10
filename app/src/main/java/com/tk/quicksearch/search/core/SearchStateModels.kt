@@ -41,6 +41,8 @@ data class SearchResultsState(
         val query: String = "",
         // App results (updated by refreshDerivedState on each query change)
         val recentApps: List<AppInfo> = emptyList(),
+        val newOrUpdatedApps: List<AppInfo> = emptyList(),
+        val mostUsedApps: List<AppInfo> = emptyList(),
         val searchResults: List<AppInfo> = emptyList(),
         // Optional staging buffer for app results.
         // null = no staged results (normal write-through path).
@@ -240,6 +242,7 @@ data class SearchUiConfigState(
         val deviceThemeEnabled: Boolean = false,
         val wallpaperAccentEnabled: Boolean = true,
         val appSuggestionsEnabled: Boolean = true,
+        val selectedAppSuggestionTab: AppSuggestionTabType = AppSuggestionTabType.RECENTS,
         val selectedIconPackPackage: String? = null,
         val availableIconPacks: List<IconPackInfo> = emptyList(),
         val maskUnsupportedIconPackIcons: Boolean = false,

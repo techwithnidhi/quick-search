@@ -825,6 +825,10 @@
          ============================================================================ -->
     <string name="app_suggestions_toggle_desc">Show or hide suggested apps on the home screen</string>
     <string name="app_suggestions_toggle_title">App Suggestions</string>
+    <string name="app_suggestions_tab_new_updated">New/Updated</string>
+    <string name="app_suggestions_tab_pinned">Pinned</string>
+    <string name="app_suggestions_tab_recent">Recents</string>
+    <string name="app_suggestions_tab_most_used">Most Used</string>
     <string name="app_suggestions_usage_access_link">usage access permission</string>
     <string name="app_suggestions_usage_access_tip">Grant usage access permission to see more appropriate suggestions</string>
     <string name="search_section_app_settings_toggle_desc">Turn app settings search on or off</string>

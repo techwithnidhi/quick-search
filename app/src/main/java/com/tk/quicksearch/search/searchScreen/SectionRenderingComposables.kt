@@ -144,8 +144,15 @@ private fun renderAppsSection(
     if (context.shouldRenderApps && appsParams.hasAppResults && appsParams.apps.isNotEmpty()) {
         AppGridView(
             apps = appsParams.apps,
+            pinnedAndRecentApps = appsParams.pinnedAndRecentApps,
+            pinnedApps = appsParams.pinnedApps,
+            newOrUpdatedApps = appsParams.newOrUpdatedApps,
+            mostUsedApps = appsParams.mostUsedApps,
             appShortcuts = appsParams.appShortcuts,
             isSearching = appsParams.isSearching,
+            hasUsagePermission = appsParams.hasUsagePermission,
+            selectedSuggestionTab = appsParams.selectedSuggestionTab,
+            onSuggestionTabSelected = appsParams.onSuggestionTabSelected,
             hasAppResults = appsParams.hasAppResults,
             onAppClick = appsParams.onAppClick,
             onAppInfoClick = appsParams.onAppInfoClick,

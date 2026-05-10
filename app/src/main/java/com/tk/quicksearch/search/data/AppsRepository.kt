@@ -224,8 +224,9 @@ class AppsRepository(
         val stats = usageMap[packageName]
         val lastUsedTime = stats?.lastTimeUsed ?: 0L
         val totalTimeInForeground = stats?.totalTimeInForeground ?: 0L
-        val launchCount = launchCounts[launchCountKey] ?: 0
+        val launchCount = resolveLaunchCount(stats, launchCounts[launchCountKey] ?: 0)
         val firstInstallTime = info.firstInstallTime
+        val lastUpdateTime = getLastUpdateTime(packageName)
         val appInfo = info.applicationInfo
         val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
@@ -239,6 +240,7 @@ class AppsRepository(
             isSystemApp = isSystemApp,
             userHandleId = userHandleId,
             componentName = info.componentName.flattenToString(),
+            lastUpdateTime = lastUpdateTime,
         )
     }
 
@@ -248,12 +250,13 @@ class AppsRepository(
         launchCounts: Map<String, Int>,
     ): AppInfo {
         val packageName = resolveInfo.activityInfo.packageName
-        val launchCount = launchCounts[packageName] ?: 0
+        val launchCount = resolveLaunchCount(usageMap[packageName], launchCounts[packageName] ?: 0)
         val label = extractAppLabel(resolveInfo, packageName)
         val stats = usageMap[packageName]
         val lastUsedTime = stats?.lastTimeUsed ?: 0L
         val totalTimeInForeground = stats?.totalTimeInForeground ?: 0L
         val firstInstallTime = getFirstInstallTime(packageName)
+        val lastUpdateTime = getLastUpdateTime(packageName)
         val isSystemApp =
             (
                 resolveInfo.activityInfo.applicationInfo.flags
@@ -270,7 +273,21 @@ class AppsRepository(
             isSystemApp = isSystemApp,
             userHandleId = null,
             componentName = "${resolveInfo.activityInfo.packageName}/${resolveInfo.activityInfo.name}",
+            lastUpdateTime = lastUpdateTime,
         )
+    }
+
+    private fun resolveLaunchCount(
+        usageStats: UsageStats?,
+        localLaunchCount: Int,
+    ): Int {
+        if (usageStats == null) return localLaunchCount
+        val usageLaunchCount =
+            runCatching {
+                val getter = UsageStats::class.java.getMethod("getAppLaunchCount")
+                (getter.invoke(usageStats) as? Int) ?: 0
+            }.getOrDefault(0)
+        return if (usageLaunchCount > 0) usageLaunchCount else localLaunchCount
     }
 
     private fun extractAppLabel(
@@ -320,6 +337,20 @@ class AppsRepository(
                 packageManager.getPackageInfo(packageName, 0).firstInstallTime
             }
         }.getOrDefault(0L)
+
+    private fun getLastUpdateTime(packageName: String): Long =
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager
+                    .getPackageInfo(
+                        packageName,
+                        PackageManager.PackageInfoFlags.of(0),
+                    ).lastUpdateTime
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+            }
+        }.getOrDefault(getFirstInstallTime(packageName))
 
     companion object {
         /**

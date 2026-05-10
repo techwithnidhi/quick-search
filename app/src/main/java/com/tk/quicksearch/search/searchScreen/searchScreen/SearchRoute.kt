@@ -507,6 +507,7 @@ fun SearchRoute(
             onHideApp = onHideAppWithUndo,
             onPinApp = viewModel::pinApp,
             onUnpinApp = viewModel::unpinApp,
+            onSuggestionTabSelected = viewModel::setSelectedAppSuggestionTab,
             onContactClick = { contact: com.tk.quicksearch.search.models.ContactInfo ->
                 viewModel.openContact(contact)
             },

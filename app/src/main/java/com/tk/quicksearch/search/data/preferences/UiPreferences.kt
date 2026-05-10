@@ -2,6 +2,7 @@ package com.tk.quicksearch.search.data.preferences
 
 import android.content.Context
 import com.tk.quicksearch.search.core.AppIconShape
+import com.tk.quicksearch.search.core.AppSuggestionTabType
 import com.tk.quicksearch.search.core.BackgroundSource
 import com.tk.quicksearch.search.core.CallingApp
 import com.tk.quicksearch.search.core.LauncherAppIcon
@@ -544,6 +545,17 @@ class UiPreferences(
         setBooleanPref(UiPreferences.KEY_APP_SUGGESTIONS_ENABLED, enabled)
     }
 
+    fun getSelectedAppSuggestionTab(): AppSuggestionTabType {
+        val raw = prefs.getString(UiPreferences.KEY_SELECTED_APP_SUGGESTION_TAB, null)
+        return raw
+            ?.let { value -> runCatching { AppSuggestionTabType.valueOf(value) }.getOrNull() }
+            ?: AppSuggestionTabType.RECENTS
+    }
+
+    fun setSelectedAppSuggestionTab(tab: AppSuggestionTabType) {
+        prefs.edit().putString(UiPreferences.KEY_SELECTED_APP_SUGGESTION_TAB, tab.name).apply()
+    }
+
     // ============================================================================
     // Web Search Suggestions Preferences
     // ============================================================================
@@ -831,6 +843,7 @@ class UiPreferences(
 
         // App suggestions preferences keys
         const val KEY_APP_SUGGESTIONS_ENABLED = "app_suggestions_enabled"
+        const val KEY_SELECTED_APP_SUGGESTION_TAB = "selected_app_suggestion_tab"
 
         // Recent queries preferences keys
         const val KEY_RECENT_QUERIES = "recent_queries"

@@ -143,6 +143,13 @@ internal class SearchPreferencesDelegate(
         )
     }
 
+    fun setSelectedAppSuggestionTab(tab: AppSuggestionTabType) {
+        scope.launch(Dispatchers.IO) {
+            userPreferences.setSelectedAppSuggestionTab(tab)
+            updateConfigState { it.copy(selectedAppSuggestionTab = tab) }
+        }
+    }
+
     fun setShowAppLabels(show: Boolean) {
         updateBooleanPreference(
             value = show,

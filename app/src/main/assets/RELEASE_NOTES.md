@@ -1,5 +1,5 @@
-- Top Matches: Turn this on to see the top result for your query across all categories. You can also enable or disable categories and adjust their priority.
-- Triggers: Long-press any result to set a trigger. The app opens it automatically when you type the trigger word and press space.
-- Set custom icons for widget buttons.
-- Option to use the system font.
-- General enhancements and bug fixes.
+- Improved App Suggestions: Swipe left or right to see New & Updated, Pinned, and Most Used apps.
+- Added support for configuring multiple AI providers at the same time.
+- Added support for custom AI providers using OpenAI-compatible APIs.
+- Improved Expanded Search History: Swipe left or right to switch between recent queries and recently opened results.
+- Bug fixes

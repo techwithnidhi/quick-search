@@ -800,7 +800,7 @@
          ============================================================================ -->
     <string name="release_notes_action_all_features">All Features</string>
     <string name="release_notes_action_got_it">Got it</string>
-    <string name="release_notes_markdown">- Top Matches: Turn this on to see the top result for your query across all categories. You can also enable or disable categories and adjust their priority.\n- Triggers: Long-press any result to set a trigger. The app opens it automatically when you type the trigger word and press space.\n- Set custom icons for widget buttons.\n- Option to use the system font.\n- General enhancements and bug fixes.</string>
+    <string name="release_notes_markdown">- Improved App Suggestions: Swipe left or right to see New &amp; Updated, Pinned, and Most Used apps.\n- Added support for configuring multiple AI providers at the same time.\n- Added support for custom AI providers using OpenAI-compatible APIs.\n- Improved Expanded Search History: Swipe left or right to switch between recent queries and recently opened results.\n- Bug fixes.</string>
     <string name="release_notes_title">Quick Search v%1$s Release Notes</string>
     <string name="release_notes_title_no_version">Quick Search Release Notes</string>
     <!-- ============================================================================

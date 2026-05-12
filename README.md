@@ -33,8 +33,10 @@ A fast & powerful Android app that lets you search across **apps, app shortcuts,
 - **World Clock**: Check the current time across different time zones by searching for city names
 - **Date & Time**: Natural-language date parsing, differences, offsets, and time arithmetic from the search bar (optional alias)
 - **AI Search**: AI search with AI-powered answers using  models and optional personal context
-- **AI Providers**: Configure API keys for OpenAI, Claude, and Groq
+- **AI Providers**: Configure API keys for multiple providers - Gemini, OpenAI, Claude, Groq - at the same time, plus custom AI providers using any OpenAI-compatible API
 - **Custom AI Tools**: Create your own AI tools (requires an API key)
+- **App Suggestions**: Swipe left or right on the suggestions row to switch between New & Updated, Pinned, and Most Used apps
+- **Search History**: View search history and swipe left or right in the expanded history to switch between recent queries and recently opened results
 - **Overlay Mode**: Enable to make the search bar appear over other apps, anywhere—changes how you access search from any screen
 - **Home Screen Widget**: Search widget and custom buttons widget with extensive customization options
 - **Launch Options**: Widget, Quick Settings Tile & Digital Assistant
@@ -68,7 +70,7 @@ Enable AI-powered answers by:
 - **Supported** (25): AI Search, Google, ChatGPT, Gemini, Perplexity, Grok, Google Maps, Google Drive, Google Photos, Google Play, YouTube, YouTube Music, Spotify, Reddit, Amazon, X (Twitter), Facebook Marketplace, Bing, DuckDuckGo, Brave, Startpage, You.com, AI Mode, Claude, Wikipedia—each can be reordered or disabled. You also have option to add **custom** search engines.
 - **Browsers**: Add installed browsers as search engines
 - **AI Search**: AI answers with Gemini API integration; choose among several Gemini and Gemma models; optional personal context
-- **AI Providers**: Support for OpenAI, Claude, and Groq API keys
+- **AI Providers**: Support for multiple providers at once (OpenAI, Claude, Groq), plus custom AI providers via any OpenAI-compatible API
 - **Style**: Choose between inline or compact styles
 
 [View all features](app/src/main/assets/FEATURES.md)

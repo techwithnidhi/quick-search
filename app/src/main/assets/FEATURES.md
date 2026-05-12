@@ -2,7 +2,7 @@
 
 This document highlights all the available features. It also includes details about hidden or non-obvious features that you might miss.
 
-**Version**: 3.4 (Updated May 4 2026)
+**Version**: 3.5 (Updated May 12 2026)
 
 ### Search
 
@@ -14,7 +14,7 @@ This document highlights all the available features. It also includes details ab
 - **Notes Search** - Write notes and search them quickly from the search bar. Swipe left from home for a quick note.
 - **Device Settings Search** - Find specific device settings
 - **App Settings Search** - Find and access Quick Search app settings directly by searching
-- **App Suggestions** - Shows suggested apps when no search query is entered. You can also choose to hide app suggestions completely. This feature requires usage access permission. If permission is not granted, the app shows suggestions based on apps you recently opened from within the app.
+- **App Suggestions** - Shows suggested apps when no search query is entered. Swipe left or right on the suggestions row to switch between **New & Updated**, **Pinned**, and **Most Used** apps. You can also choose to hide app suggestions completely. This feature requires usage access permission. If permission is not granted, the app shows suggestions based on apps you recently opened from within the app.
 
 ---
 
@@ -131,7 +131,7 @@ Long-press on most results to open a context menu with quick actions.
 - **Top Matches** - Turn on Top Matches to show the best results for your query across enabled categories. You can include or exclude categories and reorder them to control priority.
 - **App Suggestions** - You can choose to disable app suggestions if you want a cleaner home screen. 
 - **Web Search Suggestions** - Turn web suggestions on or off and control how many suggestions (1–5) appear under the search bar.
-- **Search History** - Enable or disable search history. The expanded list shows up to 15 items; **Clear all** history is available at the bottom of the list. Your search queries, recently opened items (files, contacts, etc.) appear in your search history.
+- **Search History** - Enable or disable search history. The expanded list shows up to 15 items; **Clear all** history is available at the bottom of the list. Your search queries, recently opened items (files, contacts, etc.) appear in your search history. Swipe left or right on the expanded list to switch between **recent queries** and **recently opened results**.
 - **Excluded Items** - When you exclude any item on the search results page, you can find them here and clear them if you want to.
 - **Refresh Data** - The app automatically refreshes your data from time to time, but if you want to manually refresh the data, you can do it here.
 - **Calendar Options** - Create custom calendar entries and choose to ignore past events in results. Today's events also appear on the home screen.
@@ -146,7 +146,8 @@ Long-press on most results to open a context menu with quick actions.
 - **Amazon Domain** - Select the Amazon region/domain used when searching via the Amazon engine. Updating this will open your Amazon queries within the installed app instead of the website.
 - **Custom Search Engines** - Add your own search engines by specifying a URL template with the {{query}} placeholder. The app automatically fetches the name and icon for the website, but you can choose to edit them if needed. Tapping on {{query}} in the error hint will add this string to your URL so that you don't have to type it. You can choose any installed browser to open custom search engine queries.
 - **AI Search** - Connect a Gemini API key to enable AI answers directly in Quick Search, view if a key is configured, and open the dedicated AI Search configuration screen. Gemini Flash Latest is the model which is chosen by default.
-- **AI Providers** - Configure API keys for OpenAI, Claude, and Groq providers.
+- **AI Providers** - Configure API keys for multiple AI providers - Gemini, OpenAI, Claude, Groq - at the same time and switch models as needed.
+- **Custom AI Providers** - Add your own AI providers using any OpenAI-compatible API. Specify the base URL, API key, and model details to plug in self-hosted or third-party endpoints.
 
 ---
 

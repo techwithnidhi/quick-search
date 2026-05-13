@@ -57,6 +57,13 @@ class AppSettingsRepository(
                 keywords = listOf("ai provider", "gemini", "openai", "groq", "claude"),
             )
             addNavigation(
+                id = "app_settings_api_key_setup",
+                titleRes = R.string.settings_api_key_setup_title,
+                descriptionRes = R.string.settings_api_key_setup_nav_desc,
+                destination = AppSettingsDestination.API_KEY_SETUP,
+                keywords = listOf("api key", "token", "openai", "groq", "claude"),
+            )
+            addNavigation(
                 id = "app_settings_tools",
                 titleRes = R.string.settings_tools_title,
                 descriptionRes = R.string.settings_tools_desc,

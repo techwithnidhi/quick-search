@@ -40,6 +40,7 @@ enum class AppSettingsDestination {
     UNIT_CONVERTER_INFO,
     DATE_CALCULATOR_INFO,
     GEMINI_API,
+    API_KEY_SETUP,
     CREATE_NOTE,
     NOTES_LIST,
     CREATE_CALENDAR_EVENT,

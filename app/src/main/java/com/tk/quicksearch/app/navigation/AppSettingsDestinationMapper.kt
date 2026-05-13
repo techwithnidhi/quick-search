@@ -20,6 +20,7 @@ internal fun AppSettingsDestination.toSettingsDetailTypeOrNull(): SettingsDetail
         AppSettingsDestination.EXCLUDED_ITEMS -> SettingsDetailType.EXCLUDED_ITEMS
         AppSettingsDestination.AI_SEARCH_CONFIGURE,
         AppSettingsDestination.GEMINI_API -> SettingsDetailType.GEMINI_API_CONFIG
+        AppSettingsDestination.API_KEY_SETUP -> SettingsDetailType.API_KEY_SETUP
         AppSettingsDestination.CALENDAR_EVENTS -> SettingsDetailType.CALENDAR_EVENTS
         AppSettingsDestination.NICKNAMES -> SettingsDetailType.NICKNAMES
         AppSettingsDestination.TRIGGERS -> SettingsDetailType.TRIGGERS

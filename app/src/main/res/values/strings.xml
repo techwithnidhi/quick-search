@@ -726,7 +726,7 @@
     <string name="widgets_panel_unavailable_widget">This widget is unavailable.</string>
     <string name="widgets_panel_reorder">Reorder</string>
     <string name="widgets_panel_widget_settings">Widget Settings</string>
-    <string name="widgets_panel_reorder_hint">Drag handles to rearrange widgets</string>
+    <string name="widgets_panel_reorder_hint">Long-press widgets to move or resize them</string>
     <string name="widgets_picker_title">Add Widget</string>
     <string name="widgets_picker_search_hint">Search widgets or apps</string>
     <string name="widgets_picker_empty">No widgets found.</string>

@@ -14,17 +14,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +38,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,7 +48,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Search
@@ -57,7 +60,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -83,6 +85,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -105,17 +108,20 @@ import com.tk.quicksearch.shared.util.performHapticFeedbackSafely
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import sh.calvin.reorderable.ReorderableColumn
+import kotlin.math.roundToInt
 
 private const val WIDGET_PANEL_HOST_ID = 8291
 private const val QUICK_NOTE_SAVE_DELAY_MS = 450L
 private const val WIDGET_PANEL_SWIPE_THRESHOLD_PX = 140f
 private const val WIDGET_PREVIEW_FALLBACK_SIZE_PX = 96
+private val WidgetMinWidth = 96.dp
 private val WidgetMinHeight = 104.dp
-private val WidgetMaxHeight = 260.dp
-private val WidgetManagementTouchPadding = 10.dp
-private val WidgetResizeHandleWidth = 56.dp
-private val WidgetResizeHandleHeight = 6.dp
+private val WidgetManagementTouchPadding = 12.dp
+private val WidgetPanelGridRowHeight = 96.dp
+private val WidgetPanelGridGap = 12.dp
+private val WidgetResizeEdgeHandleLength = 56.dp
+private val WidgetResizeHandleThickness = 6.dp
+private val WidgetResizeCornerHandleSize = 18.dp
 private val QuickNoteHeight = 164.dp
 private val QuickNoteFocusedHeight = 280.dp
 
@@ -129,6 +135,11 @@ private data class WidgetPickerApp(
 private data class PendingWidgetRequest(
     val appWidgetId: Int,
     val provider: AppWidgetProviderInfo,
+)
+
+private data class WidgetResizeDirection(
+    val horizontal: Int,
+    val vertical: Int,
 )
 
 @Composable
@@ -153,6 +164,10 @@ fun WidgetsPanelScreen(
     fun persistWidgets(next: List<PanelWidgetInfo>) {
         widgets = next
         preferences.setWidgets(next)
+    }
+
+    fun previewWidgets(next: List<PanelWidgetInfo>) {
+        widgets = next
     }
 
     fun addBoundWidget(request: PendingWidgetRequest) {
@@ -267,7 +282,7 @@ fun WidgetsPanelScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = DesignTokens.ContentHorizontalPadding)
-                        .padding(top = DesignTokens.SpacingLarge, bottom = DesignTokens.SpacingLarge),
+                        .padding(top = DesignTokens.SpacingXXLarge, bottom = DesignTokens.SpacingLarge),
                 verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingLarge),
             ) {
                 Row(
@@ -280,11 +295,22 @@ fun WidgetsPanelScreen(
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onNavigateToSearch) {
+                    Button(
+                        onClick = { showPicker = true },
+                        shape = DesignTokens.ShapeXXLarge,
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                    ) {
                         Icon(
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = stringResource(R.string.common_close),
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.IconSizeSmall),
                         )
+                        Spacer(modifier = Modifier.size(DesignTokens.TextButtonIconSpacing))
+                        Text(text = stringResource(R.string.common_action_add))
                     }
                 }
 
@@ -308,87 +334,26 @@ fun WidgetsPanelScreen(
                 CompactQuickNoteWidget(modifier = Modifier.fillMaxWidth())
 
                 if (widgets.isNotEmpty()) {
-                    val view = LocalView.current
-                    ReorderableColumn(
-                        list = widgets,
-                        onSettle = { fromIndex, toIndex ->
-                            if (fromIndex != toIndex) {
-                                val next =
-                                    widgets.toMutableList().apply {
-                                        add(toIndex, removeAt(fromIndex))
-                                    }
-                                persistWidgets(next)
-                            }
+                    WidgetGridPanel(
+                        widgets = widgets,
+                        appWidgetManager = appWidgetManager,
+                        appWidgetHost = appWidgetHost,
+                        reorderMode = reorderMode,
+                        onPreviewWidgets = ::previewWidgets,
+                        onPersistWidgets = ::persistWidgets,
+                        onRequestReorder = { reorderMode = true },
+                        onRemove = { widget ->
+                            appWidgetHost.deleteAppWidgetId(widget.appWidgetId)
+                            val next = preferences.removeWidget(widget.appWidgetId)
+                            widgets = next
+                            if (next.isEmpty()) reorderMode = false
                         },
-                        onMove = {
-                            performHapticFeedbackSafely(
-                                view,
-                                HapticFeedbackConstantsCompat.SEGMENT_FREQUENT_TICK,
-                            )
-                        },
-                        verticalArrangement = Arrangement.spacedBy(DesignTokens.SpacingMedium),
                         modifier =
                             Modifier
                                 .fillMaxWidth(),
-                    ) { _, widget, isDragging ->
-                        key(widget.appWidgetId) {
-                            HostedWidgetItem(
-                                widget = widget,
-                                appWidgetManager = appWidgetManager,
-                                appWidgetHost = appWidgetHost,
-                                isDragging = isDragging,
-                                dragHandleModifier =
-                                    if (reorderMode) {
-                                        Modifier.longPressDraggableHandle(
-                                            onDragStarted = {
-                                                performHapticFeedbackSafely(
-                                                    view,
-                                                    HapticFeedbackConstantsCompat.GESTURE_START,
-                                                )
-                                            },
-                                            onDragStopped = {
-                                                performHapticFeedbackSafely(
-                                                    view,
-                                                    HapticFeedbackConstantsCompat.GESTURE_END,
-                                                )
-                                            },
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                reorderMode = reorderMode,
-                                onRequestReorder = { reorderMode = true },
-                                onRemove = {
-                                    appWidgetHost.deleteAppWidgetId(widget.appWidgetId)
-                                    widgets = preferences.removeWidget(widget.appWidgetId)
-                                    if (widgets.isEmpty()) reorderMode = false
-                                },
-                                onResize = { heightDp ->
-                                    widgets =
-                                        preferences.updateWidgetHeight(
-                                            widget.appWidgetId,
-                                            heightDp,
-                                        )
-                                },
-                            )
-                        }
-                    }
+                    )
                 }
 
-                Button(
-                    onClick = { showPicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = DesignTokens.ShapeXXLarge,
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                ) {
-                    Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.size(DesignTokens.TextButtonIconSpacing))
-                    Text(text = stringResource(R.string.widgets_panel_add_widget))
-                }
             }
 
             if (showPicker) {
@@ -397,6 +362,235 @@ fun WidgetsPanelScreen(
                     onDismiss = { showPicker = false },
                     onSelectWidget = ::requestAddWidget,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetGridPanel(
+    widgets: List<PanelWidgetInfo>,
+    appWidgetManager: AppWidgetManager,
+    appWidgetHost: AppWidgetHost,
+    reorderMode: Boolean,
+    onPreviewWidgets: (List<PanelWidgetInfo>) -> Unit,
+    onPersistWidgets: (List<PanelWidgetInfo>) -> Unit,
+    onRequestReorder: () -> Unit,
+    onRemove: (PanelWidgetInfo) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    val view = LocalView.current
+    var activeWidgetId by remember { mutableStateOf<Int?>(null) }
+    var resizingWidgetId by remember { mutableStateOf<Int?>(null) }
+
+    BoxWithConstraints(modifier = modifier) {
+        val gridGap = WidgetPanelGridGap
+        val cellWidth =
+            (maxWidth - gridGap * (WIDGET_PANEL_GRID_COLUMNS - 1)) / WIDGET_PANEL_GRID_COLUMNS
+        val gridUnitWidthPx = with(density) { (cellWidth + gridGap).toPx() }
+        val gridUnitHeightPx = with(density) { (WidgetPanelGridRowHeight + gridGap).toPx() }
+        val specs =
+            remember(widgets, appWidgetManager, cellWidth) {
+                widgets.associate { widget ->
+                    val providerInfo = appWidgetManager.getAppWidgetInfo(widget.appWidgetId)
+                    val minColumnSpan =
+                        calculateGridColumnSpan(
+                            minWidthDp = providerInfo?.minWidth?.toFloat() ?: WidgetMinWidth.value,
+                            cellWidthDp = cellWidth.value,
+                            gapDp = gridGap.value,
+                        )
+                    val minRowSpan =
+                        calculateGridRowSpan(
+                            minHeightDp = providerInfo?.minHeight?.toFloat() ?: WidgetMinHeight.value,
+                            rowHeightDp = WidgetPanelGridRowHeight.value,
+                            gapDp = gridGap.value,
+                        )
+                    widget.appWidgetId to
+                        WidgetGridSpec(
+                            minColumnSpan = minColumnSpan,
+                            minRowSpan = minRowSpan,
+                        )
+                }
+            }
+        val laidOutWidgets =
+            remember(widgets, specs, activeWidgetId) {
+                resolveWidgetGridLayout(
+                    widgets = widgets,
+                    specs = specs,
+                    activeWidgetId = activeWidgetId,
+                )
+            }
+
+        LaunchedEffect(laidOutWidgets) {
+            if (laidOutWidgets != widgets) {
+                onPersistWidgets(laidOutWidgets)
+            }
+        }
+
+        val rows =
+            laidOutWidgets.maxOfOrNull { widget ->
+                (widget.row ?: 0) + (widget.rowSpan ?: WIDGET_PANEL_DEFAULT_ROW_SPAN)
+            } ?: 0
+        val panelHeight =
+            if (rows <= 0) {
+                0.dp
+            } else {
+                WidgetPanelGridRowHeight * rows + gridGap * (rows - 1)
+            }
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(panelHeight),
+        ) {
+            laidOutWidgets.forEach { widget ->
+                key(widget.appWidgetId) {
+                    val column = widget.column ?: 0
+                    val row = widget.row ?: 0
+                    val columnSpan = widget.columnSpan ?: WIDGET_PANEL_DEFAULT_COLUMN_SPAN
+                    val rowSpan = widget.rowSpan ?: WIDGET_PANEL_DEFAULT_ROW_SPAN
+                    val x = (cellWidth + gridGap) * column
+                    val y = (WidgetPanelGridRowHeight + gridGap) * row
+                    val width = cellWidth * columnSpan + gridGap * (columnSpan - 1)
+                    val height = WidgetPanelGridRowHeight * rowSpan + gridGap * (rowSpan - 1)
+                    val isInteracting =
+                        activeWidgetId == widget.appWidgetId || resizingWidgetId == widget.appWidgetId
+                    val animatedX by animateDpAsState(targetValue = x, label = "widgetGridX")
+                    val animatedY by animateDpAsState(targetValue = y, label = "widgetGridY")
+                    val animatedWidth by animateDpAsState(targetValue = width, label = "widgetGridWidth")
+                    val animatedHeight by animateDpAsState(targetValue = height, label = "widgetGridHeight")
+                    val animatedAlpha by animateFloatAsState(
+                        targetValue = if (activeWidgetId == widget.appWidgetId) DesignTokens.DragAlpha else 1f,
+                        label = "widgetGridAlpha",
+                    )
+                    var dragStartColumn by remember(widget.appWidgetId) { mutableStateOf(column) }
+                    var dragStartRow by remember(widget.appWidgetId) { mutableStateOf(row) }
+                    var totalDragX by remember(widget.appWidgetId) { mutableStateOf(0f) }
+                    var totalDragY by remember(widget.appWidgetId) { mutableStateOf(0f) }
+                    val currentColumn by rememberUpdatedState(column)
+                    val currentRow by rememberUpdatedState(row)
+                    val currentColumnSpan by rememberUpdatedState(columnSpan)
+
+                    HostedWidgetItem(
+                        widget = widget,
+                        appWidgetManager = appWidgetManager,
+                        appWidgetHost = appWidgetHost,
+                        width = if (isInteracting) width else animatedWidth,
+                        height = if (isInteracting) height else animatedHeight,
+                        isDragging = activeWidgetId == widget.appWidgetId,
+                        reorderMode = reorderMode,
+                        onRequestReorder = onRequestReorder,
+                        onRemove = { onRemove(widget) },
+                        onResizeStart = { resizingWidgetId = widget.appWidgetId },
+                        onResize = { resize ->
+                            val next =
+                                widgets
+                                    .map { item ->
+                                        if (item.appWidgetId == widget.appWidgetId) {
+                                            item.withGridResize(resize)
+                                        } else {
+                                            item
+                                        }
+                                    }.let { candidates ->
+                                        resolveWidgetGridLayout(
+                                            widgets = candidates,
+                                            specs = specs,
+                                            activeWidgetId = widget.appWidgetId,
+                                        )
+                                    }
+                            onPreviewWidgets(next)
+                        },
+                        onResizeFinished = {
+                            resizingWidgetId = null
+                            onPersistWidgets(
+                                resolveWidgetGridLayout(
+                                    widgets = widgets,
+                                    specs = specs,
+                                    activeWidgetId = widget.appWidgetId,
+                                ),
+                            )
+                        },
+                        gridUnitWidthPx = gridUnitWidthPx,
+                        gridUnitHeightPx = gridUnitHeightPx,
+                        spec = specs[widget.appWidgetId],
+                        modifier =
+                            Modifier
+                                .offset {
+                                    IntOffset(
+                                        x = with(density) { (if (isInteracting) x else animatedX).roundToPx() },
+                                        y = with(density) { (if (isInteracting) y else animatedY).roundToPx() },
+                                    )
+                                }.graphicsLayer { alpha = animatedAlpha }
+                                .pointerInput(widget.appWidgetId, gridUnitWidthPx, gridUnitHeightPx) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            activeWidgetId = widget.appWidgetId
+                                            dragStartColumn = currentColumn
+                                            dragStartRow = currentRow
+                                            totalDragX = 0f
+                                            totalDragY = 0f
+                                            performHapticFeedbackSafely(
+                                                view,
+                                                HapticFeedbackConstantsCompat.GESTURE_START,
+                                            )
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            totalDragX += dragAmount.x
+                                            totalDragY += dragAmount.y
+                                            val nextColumn =
+                                                (dragStartColumn + (totalDragX / gridUnitWidthPx).roundToInt())
+                                                    .coerceIn(0, WIDGET_PANEL_GRID_COLUMNS - currentColumnSpan)
+                                            val nextRow =
+                                                (dragStartRow + (totalDragY / gridUnitHeightPx).roundToInt())
+                                                    .coerceAtLeast(0)
+                                            val next =
+                                                widgets
+                                                    .map { item ->
+                                                        if (item.appWidgetId == widget.appWidgetId) {
+                                                            item.withGridPosition(nextColumn, nextRow)
+                                                        } else {
+                                                            item
+                                                        }
+                                                    }.let { candidates ->
+                                                        resolveWidgetGridLayout(
+                                                            widgets = candidates,
+                                                            specs = specs,
+                                                            activeWidgetId = widget.appWidgetId,
+                                                        )
+                                                    }
+                                            onPreviewWidgets(next)
+                                        },
+                                        onDragEnd = {
+                                            activeWidgetId = null
+                                            onPersistWidgets(
+                                                resolveWidgetGridLayout(
+                                                    widgets = widgets,
+                                                    specs = specs,
+                                                    activeWidgetId = widget.appWidgetId,
+                                                ),
+                                            )
+                                            performHapticFeedbackSafely(
+                                                view,
+                                                HapticFeedbackConstantsCompat.GESTURE_END,
+                                            )
+                                        },
+                                        onDragCancel = {
+                                            activeWidgetId = null
+                                            onPersistWidgets(
+                                                resolveWidgetGridLayout(
+                                                    widgets = widgets,
+                                                    specs = specs,
+                                                    activeWidgetId = widget.appWidgetId,
+                                                ),
+                                            )
+                                        },
+                                    )
+                                },
+                    )
+                }
             }
         }
     }
@@ -525,12 +719,18 @@ private fun HostedWidgetItem(
     widget: PanelWidgetInfo,
     appWidgetManager: AppWidgetManager,
     appWidgetHost: AppWidgetHost,
+    width: Dp,
+    height: Dp,
     isDragging: Boolean,
-    dragHandleModifier: Modifier,
     reorderMode: Boolean,
     onRequestReorder: () -> Unit,
     onRemove: () -> Unit,
-    onResize: (Float) -> Unit,
+    onResizeStart: () -> Unit,
+    onResize: (WidgetGridResize) -> Unit,
+    onResizeFinished: () -> Unit,
+    gridUnitWidthPx: Float,
+    gridUnitHeightPx: Float,
+    spec: WidgetGridSpec?,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -538,14 +738,6 @@ private fun HostedWidgetItem(
     val view = LocalView.current
     val providerInfo = remember(widget.appWidgetId) {
         appWidgetManager.getAppWidgetInfo(widget.appWidgetId)
-    }
-    val defaultHeight =
-        remember(providerInfo, widget.heightDp) {
-            val minHeight = providerInfo?.minHeight?.dp ?: WidgetMinHeight
-            widget.heightDp?.dp ?: minHeight.coerceIn(WidgetMinHeight, WidgetMaxHeight)
-        }
-    var height by remember(widget.appWidgetId, widget.heightDp, defaultHeight) {
-        mutableStateOf(defaultHeight.coerceIn(WidgetMinHeight, WidgetMaxHeight))
     }
 
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -572,7 +764,7 @@ private fun HostedWidgetItem(
     Column(
         modifier =
             modifier
-                .fillMaxWidth()
+                .size(width = width, height = height)
                 .graphicsLayer { alpha = if (isDragging) DesignTokens.DragAlpha else 1f },
     ) {
         if (reorderMode) {
@@ -581,8 +773,8 @@ private fun HostedWidgetItem(
                     Modifier
                         .fillMaxWidth()
                         .padding(
-                            start = DesignTokens.SpacingSmall,
-                            end = DesignTokens.SpacingSmall,
+                            start = DesignTokens.SpacingXSmall,
+                            end = DesignTokens.SpacingXSmall,
                             bottom = DesignTokens.SpacingSmall,
                         ),
                 verticalAlignment = Alignment.CenterVertically,
@@ -593,8 +785,7 @@ private fun HostedWidgetItem(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier =
                         Modifier
-                            .size(DesignTokens.IconSize)
-                            .then(dragHandleModifier),
+                            .size(DesignTokens.IconSize),
                 )
                 Text(
                     text = providerInfo?.loadLabel(context.packageManager)?.toString().orEmpty(),
@@ -613,7 +804,7 @@ private fun HostedWidgetItem(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(height + WidgetManagementTouchPadding * 2),
+                    .weight(1f, fill = true),
         ) {
             DropdownMenu(
                 expanded = showActionsMenu,
@@ -665,12 +856,7 @@ private fun HostedWidgetItem(
             }
 
             if (providerInfo != null) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(WidgetManagementTouchPadding),
-                ) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     AndroidView(
                         factory = {
                             appWidgetHost.createView(it, widget.appWidgetId, providerInfo).apply {
@@ -681,7 +867,7 @@ private fun HostedWidgetItem(
                                 setAppWidget(widget.appWidgetId, providerInfo)
                                 layoutParams =
                                     ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        with(density) { width.roundToPx() },
                                         with(density) { height.roundToPx() },
                                     )
                             }
@@ -693,60 +879,40 @@ private fun HostedWidgetItem(
                             }
                             hostView.layoutParams =
                                 ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    with(density) { width.roundToPx() },
                                     with(density) { height.roundToPx() },
                                 )
+                            val widthDp = width.value.toInt()
+                            val heightDp = height.value.toInt()
                             hostView.updateAppWidgetSize(
                                 Bundle(),
-                                providerInfo.minWidth,
-                                providerInfo.minHeight,
-                                providerInfo.minResizeWidth.takeIf { it > 0 }
-                                    ?: providerInfo.minWidth,
-                                providerInfo.minResizeHeight.takeIf { it > 0 }
-                                    ?: providerInfo.minHeight,
+                                widthDp,
+                                heightDp,
+                                widthDp,
+                                heightDp,
                             )
                         },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(height),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    WidgetManagementGesturePadding(
+                        onLongPress = currentShowActionsMenu,
+                        modifier = Modifier.matchParentSize(),
                     )
 
                     if (isManaging) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .matchParentSize()
-                                    .border(
-                                        width = 1.5.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = DesignTokens.ExtraLargeCardShape,
-                                    ),
-                        )
-                        Surface(
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = DesignTokens.SpacingSmall)
-                                    .size(
-                                        width = WidgetResizeHandleWidth,
-                                        height = WidgetResizeHandleHeight,
-                                    )
-                                    .pointerInput(widget.appWidgetId) {
-                                        detectVerticalDragGestures(
-                                            onVerticalDrag = { change, dragAmount ->
-                                                change.consume()
-                                                height =
-                                                    (height + with(density) { dragAmount.toDp() })
-                                                        .coerceIn(WidgetMinHeight, WidgetMaxHeight)
-                                            },
-                                            onDragEnd = { onResize(height.value) },
-                                            onDragCancel = { onResize(height.value) },
-                                        )
-                                    },
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            content = {},
+                        WidgetResizeFrame(
+                            widget = widget,
+                            width = width,
+                            height = height,
+                            gridUnitWidthPx = gridUnitWidthPx,
+                            gridUnitHeightPx = gridUnitHeightPx,
+                            minColumnSpan = spec?.minColumnSpan ?: 1,
+                            minRowSpan = spec?.minRowSpan ?: 1,
+                            onResizeStart = onResizeStart,
+                            onResize = onResize,
+                            onResizeFinished = onResizeFinished,
+                            modifier = Modifier.align(Alignment.Center),
                         )
                     }
                 }
@@ -762,12 +928,196 @@ private fun HostedWidgetItem(
                             .padding(DesignTokens.CardHorizontalPadding),
                 )
             }
-            WidgetManagementGesturePadding(
-                onLongPress = currentShowActionsMenu,
-                modifier = Modifier.matchParentSize(),
+        }
+    }
+}
+
+@Composable
+private fun WidgetResizeFrame(
+    widget: PanelWidgetInfo,
+    width: Dp,
+    height: Dp,
+    gridUnitWidthPx: Float,
+    gridUnitHeightPx: Float,
+    minColumnSpan: Int,
+    minRowSpan: Int,
+    onResizeStart: () -> Unit,
+    onResize: (WidgetGridResize) -> Unit,
+    onResizeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val frameWidth = width + WidgetManagementTouchPadding * 2
+    val frameHeight = height + WidgetManagementTouchPadding * 2
+
+    Box(
+        modifier =
+            modifier
+                .size(width = frameWidth, height = frameHeight)
+                .border(
+                    width = 1.5.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = DesignTokens.ExtraLargeCardShape,
+                ),
+    ) {
+        WidgetResizeHandle(
+            direction = WidgetResizeDirection(horizontal = 0, vertical = -1),
+            widget = widget,
+            gridUnitWidthPx = gridUnitWidthPx,
+            gridUnitHeightPx = gridUnitHeightPx,
+            minColumnSpan = minColumnSpan,
+            minRowSpan = minRowSpan,
+            onResizeStart = onResizeStart,
+            onResize = onResize,
+            onResizeFinished = onResizeFinished,
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .size(
+                        width = WidgetResizeEdgeHandleLength,
+                        height = WidgetResizeHandleThickness,
+                    ),
+        )
+        WidgetResizeHandle(
+            direction = WidgetResizeDirection(horizontal = 0, vertical = 1),
+            widget = widget,
+            gridUnitWidthPx = gridUnitWidthPx,
+            gridUnitHeightPx = gridUnitHeightPx,
+            minColumnSpan = minColumnSpan,
+            minRowSpan = minRowSpan,
+            onResizeStart = onResizeStart,
+            onResize = onResize,
+            onResizeFinished = onResizeFinished,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .size(
+                        width = WidgetResizeEdgeHandleLength,
+                        height = WidgetResizeHandleThickness,
+                    ),
+        )
+        WidgetResizeHandle(
+            direction = WidgetResizeDirection(horizontal = -1, vertical = 0),
+            widget = widget,
+            gridUnitWidthPx = gridUnitWidthPx,
+            gridUnitHeightPx = gridUnitHeightPx,
+            minColumnSpan = minColumnSpan,
+            minRowSpan = minRowSpan,
+            onResizeStart = onResizeStart,
+            onResize = onResize,
+            onResizeFinished = onResizeFinished,
+            modifier =
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .size(
+                        width = WidgetResizeHandleThickness,
+                        height = WidgetResizeEdgeHandleLength,
+                    ),
+        )
+        WidgetResizeHandle(
+            direction = WidgetResizeDirection(horizontal = 1, vertical = 0),
+            widget = widget,
+            gridUnitWidthPx = gridUnitWidthPx,
+            gridUnitHeightPx = gridUnitHeightPx,
+            minColumnSpan = minColumnSpan,
+            minRowSpan = minRowSpan,
+            onResizeStart = onResizeStart,
+            onResize = onResize,
+            onResizeFinished = onResizeFinished,
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(
+                        width = WidgetResizeHandleThickness,
+                        height = WidgetResizeEdgeHandleLength,
+                    ),
+        )
+        listOf(
+            Alignment.TopStart to WidgetResizeDirection(horizontal = -1, vertical = -1),
+            Alignment.TopEnd to WidgetResizeDirection(horizontal = 1, vertical = -1),
+            Alignment.BottomStart to WidgetResizeDirection(horizontal = -1, vertical = 1),
+            Alignment.BottomEnd to WidgetResizeDirection(horizontal = 1, vertical = 1),
+        ).forEach { (alignment, direction) ->
+            WidgetResizeHandle(
+                direction = direction,
+                widget = widget,
+                gridUnitWidthPx = gridUnitWidthPx,
+                gridUnitHeightPx = gridUnitHeightPx,
+                minColumnSpan = minColumnSpan,
+                minRowSpan = minRowSpan,
+                onResizeStart = onResizeStart,
+                onResize = onResize,
+                onResizeFinished = onResizeFinished,
+                modifier =
+                    Modifier
+                        .align(alignment)
+                        .size(WidgetResizeCornerHandleSize),
             )
         }
     }
+}
+
+@Composable
+private fun WidgetResizeHandle(
+    direction: WidgetResizeDirection,
+    widget: PanelWidgetInfo,
+    gridUnitWidthPx: Float,
+    gridUnitHeightPx: Float,
+    minColumnSpan: Int,
+    minRowSpan: Int,
+    onResizeStart: () -> Unit,
+    onResize: (WidgetGridResize) -> Unit,
+    onResizeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val currentWidget by rememberUpdatedState(widget)
+    Surface(
+        modifier =
+            modifier.pointerInput(direction, gridUnitWidthPx, gridUnitHeightPx) {
+                var totalHorizontalDelta = 0f
+                var totalVerticalDelta = 0f
+                var startColumn = currentWidget.column ?: 0
+                var startRow = currentWidget.row ?: 0
+                var startColumnSpan = currentWidget.columnSpan ?: WIDGET_PANEL_DEFAULT_COLUMN_SPAN
+                var startRowSpan = currentWidget.rowSpan ?: WIDGET_PANEL_DEFAULT_ROW_SPAN
+                detectDragGestures(
+                    onDragStart = {
+                        onResizeStart()
+                        startColumn = currentWidget.column ?: 0
+                        startRow = currentWidget.row ?: 0
+                        startColumnSpan = currentWidget.columnSpan ?: WIDGET_PANEL_DEFAULT_COLUMN_SPAN
+                        startRowSpan = currentWidget.rowSpan ?: WIDGET_PANEL_DEFAULT_ROW_SPAN
+                        totalHorizontalDelta = 0f
+                        totalVerticalDelta = 0f
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        totalHorizontalDelta += dragAmount.x
+                        totalVerticalDelta += dragAmount.y
+                        onResize(
+                            calculateGridResize(
+                                startColumn = startColumn,
+                                startRow = startRow,
+                                startColumnSpan = startColumnSpan,
+                                startRowSpan = startRowSpan,
+                                horizontalDirection = direction.horizontal,
+                                verticalDirection = direction.vertical,
+                                horizontalDeltaPx = totalHorizontalDelta,
+                                verticalDeltaPx = totalVerticalDelta,
+                                gridUnitWidthPx = gridUnitWidthPx,
+                                gridUnitHeightPx = gridUnitHeightPx,
+                                minColumnSpan = minColumnSpan,
+                                minRowSpan = minRowSpan,
+                            ),
+                        )
+                    },
+                    onDragEnd = onResizeFinished,
+                    onDragCancel = onResizeFinished,
+                )
+            },
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary,
+        content = {},
+    )
 }
 
 @Composable

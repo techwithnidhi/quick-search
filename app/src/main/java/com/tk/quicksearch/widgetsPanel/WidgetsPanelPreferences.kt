@@ -11,7 +11,10 @@ data class PanelWidgetInfo(
     val appWidgetId: Int,
     val providerPackage: String,
     val providerClassName: String,
-    val heightDp: Float? = null,
+    val column: Int? = null,
+    val row: Int? = null,
+    val columnSpan: Int? = null,
+    val rowSpan: Int? = null,
 )
 
 class WidgetsPanelPreferences(
@@ -38,11 +41,10 @@ class WidgetsPanelPreferences(
                                 appWidgetId = appWidgetId,
                                 providerPackage = providerPackage,
                                 providerClassName = providerClassName,
-                                heightDp =
-                                    item
-                                        .optDouble(FIELD_HEIGHT_DP, Double.NaN)
-                                        .takeIf { !it.isNaN() }
-                                        ?.toFloat(),
+                                column = item.optGridInt(FIELD_COLUMN),
+                                row = item.optGridInt(FIELD_ROW),
+                                columnSpan = item.optGridInt(FIELD_COLUMN_SPAN),
+                                rowSpan = item.optGridInt(FIELD_ROW_SPAN),
                             ),
                         )
                     }
@@ -62,7 +64,10 @@ class WidgetsPanelPreferences(
                     .put(FIELD_PROVIDER_PACKAGE, widget.providerPackage)
                     .put(FIELD_PROVIDER_CLASS, widget.providerClassName)
                     .apply {
-                        widget.heightDp?.let { put(FIELD_HEIGHT_DP, it) }
+                        widget.column?.let { put(FIELD_COLUMN, it) }
+                        widget.row?.let { put(FIELD_ROW, it) }
+                        widget.columnSpan?.let { put(FIELD_COLUMN_SPAN, it) }
+                        widget.rowSpan?.let { put(FIELD_ROW_SPAN, it) }
                     },
             )
         }
@@ -90,27 +95,21 @@ class WidgetsPanelPreferences(
         return next
     }
 
-    fun updateWidgetHeight(
-        appWidgetId: Int,
-        heightDp: Float,
-    ): List<PanelWidgetInfo> {
-        val next =
-            getWidgets().map { widget ->
-                if (widget.appWidgetId == appWidgetId) {
-                    widget.copy(heightDp = heightDp)
-                } else {
-                    widget
-                }
-            }
-        setWidgets(next)
-        return next
-    }
-
     private companion object {
         const val KEY_WIDGETS_PANEL_ITEMS = "widgets_panel_items"
         const val FIELD_APP_WIDGET_ID = "appWidgetId"
         const val FIELD_PROVIDER_PACKAGE = "providerPackage"
         const val FIELD_PROVIDER_CLASS = "providerClassName"
-        const val FIELD_HEIGHT_DP = "heightDp"
+        const val FIELD_COLUMN = "column"
+        const val FIELD_ROW = "row"
+        const val FIELD_COLUMN_SPAN = "columnSpan"
+        const val FIELD_ROW_SPAN = "rowSpan"
     }
 }
+
+private fun JSONObject.optGridInt(field: String): Int? =
+    if (has(field)) {
+        optInt(field).takeIf { it >= 0 }
+    } else {
+        null
+    }

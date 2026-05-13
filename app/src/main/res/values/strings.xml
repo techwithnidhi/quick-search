@@ -721,6 +721,17 @@
     <string name="settings_wallpaper_transparency_label">Transparency</string>
     <string name="shortcut_song_search_label">Song Search</string>
     <string name="shortcut_watch_later_label">Watch Later</string>
+    <string name="widgets_panel_title">Widgets</string>
+    <string name="widgets_panel_add_widget">Add Widget</string>
+    <string name="widgets_panel_unavailable_widget">This widget is unavailable.</string>
+    <string name="widgets_panel_reorder">Reorder</string>
+    <string name="widgets_panel_widget_settings">Widget Settings</string>
+    <string name="widgets_panel_reorder_hint">Drag handles to rearrange widgets</string>
+    <string name="widgets_picker_title">Add Widget</string>
+    <string name="widgets_picker_search_hint">Search widgets or apps</string>
+    <string name="widgets_picker_empty">No widgets found.</string>
+    <string name="widgets_picker_widget_count">%1$d widgets</string>
+    <string name="widgets_picker_widget_size">%1$d x %2$d dp</string>
     <!-- ============================================================================
          Widget
          ============================================================================ -->

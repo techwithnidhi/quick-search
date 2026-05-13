@@ -45,8 +45,10 @@ import com.tk.quicksearch.settings.settingsDetailScreen.CustomToolNavigationMemo
 import com.tk.quicksearch.settings.shared.SettingsRoute
 import com.tk.quicksearch.shared.permissions.PermissionHelper
 import com.tk.quicksearch.shared.util.FeedbackUtils
+import com.tk.quicksearch.widgetsPanel.WidgetsPanelScreen
 
 enum class RootDestination {
+    WidgetsPanel,
     Search,
     Settings,
 }
@@ -446,6 +448,7 @@ private fun NavigationContent(
     onFinishActivity: () -> Unit,
 ) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateCalendarEventDialog by remember { mutableStateOf(false) }
     var rootAnimationDirectionOverride by remember { mutableStateOf<SwipeAnimationDirection?>(null) }
     var settingsDetailAnimationDirectionOverride by
@@ -463,8 +466,13 @@ private fun NavigationContent(
         targetState = destination,
         transitionSpec = {
             val isForward =
-                initialState == RootDestination.Search &&
-                    targetState == RootDestination.Settings
+                when {
+                    initialState == RootDestination.WidgetsPanel &&
+                        targetState == RootDestination.Search -> true
+                    initialState == RootDestination.Search &&
+                        targetState == RootDestination.Settings -> true
+                    else -> false
+                }
             val animationDirection =
                 rootAnimationDirectionOverride
                     ?: if (isForward) {
@@ -477,6 +485,22 @@ private fun NavigationContent(
         label = "NavigationTransition",
     ) { targetDestination ->
         when (targetDestination) {
+            RootDestination.WidgetsPanel -> {
+                BackHandler {
+                    rootAnimationDirectionOverride = SwipeAnimationDirection.LEFT
+                    onDestinationChange(RootDestination.Search)
+                }
+                WidgetsPanelScreen(
+                    onNavigateToSearch = {
+                        rootAnimationDirectionOverride = SwipeAnimationDirection.LEFT
+                        onDestinationChange(RootDestination.Search)
+                    },
+                    appTheme = uiState.appTheme,
+                    overlayThemeIntensity = uiState.overlayThemeIntensity,
+                    deviceThemeEnabled = uiState.deviceThemeEnabled,
+                )
+            }
+
             RootDestination.Settings -> {
                 SettingsNavigationContent(
                     settingsDetailType = settingsDetailType,
@@ -510,6 +534,11 @@ private fun NavigationContent(
                     settingsDetailAnimationDirectionOverride = SwipeAnimationDirection.RIGHT
                     onDestinationChange(RootDestination.Settings)
                     onSettingsDetailTypeChangeFromSearch(SettingsDetailType.NOTE_EDITOR)
+                    keyboardController?.hide()
+                }
+                val navigateToWidgetsPanelFromSwipeRight: () -> Unit = {
+                    rootAnimationDirectionOverride = SwipeAnimationDirection.RIGHT
+                    onDestinationChange(RootDestination.WidgetsPanel)
                     keyboardController?.hide()
                 }
                 SearchRoute(
@@ -574,6 +603,7 @@ private fun NavigationContent(
                         }
                     },
                     onOpenQuickNoteFromSwipe = navigateToQuickNoteFromSwipeRight,
+                    onOpenWidgetsPanelFromSwipe = navigateToWidgetsPanelFromSwipeRight,
                     onSearchEngineLongPress = {
                         navigateToSettings(SettingsDetailType.SEARCH_ENGINES)
                     },
@@ -609,7 +639,6 @@ private fun NavigationContent(
     }
 
     if (showCreateCalendarEventDialog) {
-        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val customCalendarEventRepository = remember(context) { CustomCalendarEventRepository(context) }
         CreateCalendarEventDialog(
             onDismiss = { showCreateCalendarEventDialog = false },

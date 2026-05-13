@@ -85,6 +85,7 @@ fun SearchRoute(
     onOpenAppSettingDestination: (AppSettingsDestination) -> Unit = {},
     onOpenNotesDetail: (Long?) -> Unit = {},
     onOpenQuickNoteFromSwipe: ((Long) -> Unit)? = null,
+    onOpenWidgetsPanelFromSwipe: (() -> Unit)? = null,
     onOverlayDismissRequest: (() -> Unit)? = null,
     onCloseAppRequest: (() -> Unit)? = null,
     onShowToast: (Int) -> Unit = {},
@@ -466,7 +467,11 @@ fun SearchRoute(
                 },
                 onDragEnd = {
                     if (totalHorizontalDrag >= SWIPE_NAVIGATION_THRESHOLD_PX) {
-                        openQuickNoteEditor()
+                        if (context.isDefaultHomeApp()) {
+                            onOpenWidgetsPanelFromSwipe?.invoke() ?: openQuickNoteEditor()
+                        } else {
+                            openQuickNoteEditor()
+                        }
                     } else if (totalHorizontalDrag <= -SWIPE_NAVIGATION_THRESHOLD_PX) {
                         onSettingsClick()
                     }

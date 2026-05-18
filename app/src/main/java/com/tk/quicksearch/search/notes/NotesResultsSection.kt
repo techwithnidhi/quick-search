@@ -15,7 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -283,7 +283,7 @@ internal fun NoteRow(
                         showMenu = false
                         onTriggerClick(note)
                     },
-                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Rounded.Bolt, contentDescription = null) },
                 )
                 HorizontalDivider()
                 DropdownMenuItem(

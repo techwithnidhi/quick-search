@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -442,7 +444,7 @@ private fun AppShortcutDropdownMenu(
                                                 },
                                         icon = {
                                                 Icon(
-                                                        imageVector = Icons.Rounded.Edit,
+                                                        imageVector = Icons.Rounded.Bolt,
                                                         contentDescription = null,
                                                 )
                                         },
@@ -516,7 +518,7 @@ private fun AppShortcutDropdownMenu(
                                                 textResId = R.string.action_edit_icon,
                                                 icon = {
                                                         Icon(
-                                                                imageVector = Icons.Rounded.Edit,
+                                                                imageVector = Icons.Rounded.Image,
                                                                 contentDescription = null,
                                                         )
                                                 },

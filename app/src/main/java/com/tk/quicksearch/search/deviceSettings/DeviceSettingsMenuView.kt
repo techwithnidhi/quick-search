@@ -2,6 +2,7 @@ package com.tk.quicksearch.search.deviceSettings
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -74,7 +75,7 @@ fun DeviceSettingsDropdownMenu(
                                     if (hasTrigger) R.string.action_edit_trigger
                                     else R.string.action_add_trigger,
                             icon = {
-                                Icon(imageVector = Icons.Rounded.Edit, contentDescription = null)
+                                Icon(imageVector = Icons.Rounded.Bolt, contentDescription = null)
                             },
                             onClick = {
                                 onDismissRequest()

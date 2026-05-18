@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Home
@@ -189,7 +190,7 @@ fun FileDropdownMenu(
                                     if (hasTrigger) R.string.action_edit_trigger
                                     else R.string.action_add_trigger,
                             icon = {
-                                Icon(imageVector = Icons.Rounded.Edit, contentDescription = null)
+                                Icon(imageVector = Icons.Rounded.Bolt, contentDescription = null)
                             },
                             onClick = {
                                 onDismissRequest()

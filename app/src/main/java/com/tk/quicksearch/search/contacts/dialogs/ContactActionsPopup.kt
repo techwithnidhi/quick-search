@@ -16,7 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -714,7 +714,7 @@ private fun ContactActionLongPressMenu(
                             ),
                     )
                 },
-                leadingIcon = { Icon(imageVector = Icons.Rounded.Edit, contentDescription = null) },
+                leadingIcon = { Icon(imageVector = Icons.Rounded.Bolt, contentDescription = null) },
                 onClick = {
                     onDismissRequest()
                     onContactActionTriggerClick(contact, action, actionDisplayName)

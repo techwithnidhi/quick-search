@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
@@ -173,7 +174,7 @@ fun AppItemDropdownMenu(
                                         R.string.action_add_trigger
                                     },
                             icon = {
-                                Icon(imageVector = Icons.Rounded.Edit, contentDescription = null)
+                                Icon(imageVector = Icons.Rounded.Bolt, contentDescription = null)
                             },
                             onClick = {
                                 onDismiss()

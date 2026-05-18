@@ -22,17 +22,24 @@ android {
 
     buildTypes {
         debug {
+            applicationIdSuffix = ".debug"
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false
+            resValue("string", "app_name", "QS Debug")
         }
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
         }
+    }
+
+    adbOptions {
+        installOptions("--user", "0")
     }
 
     buildFeatures {

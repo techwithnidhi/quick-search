@@ -636,6 +636,15 @@ fun launchStaticShortcut(
         val details = formatIntentDetails(intent)
         val resolved = pm.resolveActivity(intent, 0)
         if (resolved == null) {
+            // Activities that can't be resolved via PackageManager (e.g., Knox-protected
+            // activities) may still be launchable directly. Try if this is an explicit
+            // component intent from a custom deep link (parsed from an intent URI).
+            val isExplicitComponentDeepLink =
+                shortcut.id.startsWith("custom_deeplink_") && intent.component != null
+            if (isExplicitComponentDeepLink) {
+                val error = runCatching { context.startActivity(intent) }.exceptionOrNull()
+                if (error == null) return null
+            }
             noActivityIntentDetails = details
             return@forEach
         }

@@ -4,6 +4,7 @@ import android.os.Trace
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -11,10 +12,15 @@ internal class SearchStartupCoordinator(
     private val scope: CoroutineScope,
     private val hasStartedStartupPhases: AtomicBoolean,
     private val updateStartupPhase: (StartupPhase) -> Unit,
+    private val shouldReserveKeyboardStartupWindow: () -> Boolean,
     private val loadCacheAndMinimalPrefsBlock: suspend () -> Unit,
     private val loadRemainingStartupPreferencesBlock: suspend () -> Unit,
     private val launchDeferredInitializationBlock: () -> Unit,
 ) {
+    private companion object {
+        const val KeyboardStartupQuietWindowMs = 350L
+    }
+
     fun startStartupPhases() {
         if (!hasStartedStartupPhases.compareAndSet(false, true)) return
 
@@ -28,6 +34,9 @@ internal class SearchStartupCoordinator(
             }
 
             kotlinx.coroutines.yield()
+            if (shouldReserveKeyboardStartupWindow()) {
+                delay(KeyboardStartupQuietWindowMs)
+            }
 
             updateStartupPhase(StartupPhase.PHASE_2_HEAVY_FEATURES)
             Trace.beginSection("QS.Startup.Phase2.HeavyInit")

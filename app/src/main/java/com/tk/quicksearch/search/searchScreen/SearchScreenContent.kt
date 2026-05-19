@@ -766,6 +766,7 @@ internal fun SearchScreenContent(
                 showWelcomeAnimation = state.showSearchBarWelcomeAnimation,
                 showWallpaperBackground = state.showWallpaperBackground,
                 autoFocusOnStart = state.openKeyboardOnLaunch,
+                startupSurfaceReady = state.isStartupCoreSurfaceReady,
                 onClearDetectedShortcut = onClearDetectedShortcut,
                 onSectionSelected = onSectionSelected,
                 onWelcomeAnimationCompleted = onWelcomeAnimationCompleted,

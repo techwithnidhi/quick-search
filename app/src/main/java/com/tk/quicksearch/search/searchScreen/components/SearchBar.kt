@@ -162,6 +162,7 @@ internal fun PersistentSearchBar(
     opaqueBackground: Boolean = false,
     forceRestingOutline: Boolean = false,
     autoFocusOnStart: Boolean = false,
+    startupSurfaceReady: Boolean = true,
     onClearDetectedShortcut: () -> Unit = {},
     onSectionSelected: (SearchSection) -> Unit = {},
     onWelcomeAnimationCompleted: (() -> Unit)? = null,
@@ -293,12 +294,12 @@ internal fun PersistentSearchBar(
         aliasMorphText = null
     }
 
-    LaunchedEffect(autoFocusOnStart, hasLaidOutSearchField) {
+    LaunchedEffect(autoFocusOnStart, startupSurfaceReady, hasLaidOutSearchField) {
         if (!autoFocusOnStart) {
             hasCompletedStartupAutoFocus = true
             return@LaunchedEffect
         }
-        if (autoFocusOnStart && hasLaidOutSearchField) {
+        if (autoFocusOnStart && startupSurfaceReady && hasLaidOutSearchField) {
             // Let first layout and startup state restoration settle before starting IME animation.
             withFrameNanos { }
             delay(StartupKeyboardDelayMs)

@@ -126,7 +126,7 @@ class SearchWidget(
                 config.theme == WidgetTheme.SYSTEM &&
                 config.backgroundColor == null &&
                 !config.useDeviceThemeBackground
-        val useResourceBackedBackground = useDynamicSystemBackground || config.useDeviceThemeBackground
+        val useResourceBackedBackground = useDynamicSystemBackground
 
         val backgroundBitmap =
             if (!hasDefaultBackground && !useResourceBackedBackground) {

@@ -126,6 +126,9 @@ internal object SearchViewModelInitialStateFactory {
                 launcherAppIcon = startupPreferencesReader.getLauncherAppIcon(),
                 showAppLabels =
                     startupSnapshot?.showAppLabels ?: startupPreferencesReader.shouldShowAppLabels(),
+                appIconSizeStep =
+                    startupSnapshot?.appIconSizeStep
+                        ?: startupPreferencesReader.getAppIconSizeStep(),
                 appSuggestionsEnabled =
                     startupSnapshot?.appSuggestionsEnabled
                         ?: startupPreferencesReader.areAppSuggestionsEnabled(),

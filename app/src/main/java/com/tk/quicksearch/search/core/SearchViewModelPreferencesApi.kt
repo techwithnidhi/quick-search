@@ -65,6 +65,8 @@ internal interface SearchViewModelPreferencesApi {
 
     fun setPhoneAppGridColumns(columns: Int) = preferencesApiDelegate.setPhoneAppGridColumns(columns)
 
+    fun setAppIconSizeStep(step: Int) = preferencesApiDelegate.setAppIconSizeStep(step)
+
     fun setWebSuggestionsEnabled(enabled: Boolean) =
         preferencesApiDelegate.setWebSuggestionsEnabled(enabled)
 
@@ -282,6 +284,8 @@ class SearchViewModelPreferencesApiDelegate internal constructor(
     fun setShowAppLabels(show: Boolean) = preferencesDelegate.setShowAppLabels(show)
 
     fun setPhoneAppGridColumns(columns: Int) = preferencesDelegate.setPhoneAppGridColumns(columns)
+
+    fun setAppIconSizeStep(step: Int) = preferencesDelegate.setAppIconSizeStep(step)
 
     fun setWebSuggestionsEnabled(enabled: Boolean) = webSuggestionHandler.setEnabled(enabled)
 

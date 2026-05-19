@@ -395,6 +395,20 @@ class UiPreferences(
         prefs.edit().putInt(KEY_PHONE_APP_GRID_COLUMNS, columns.coerceIn(4, 5)).apply()
     }
 
+    fun getAppIconSizeStep(): Int =
+            prefs.getInt(KEY_APP_ICON_SIZE_STEP, DEFAULT_APP_ICON_SIZE_STEP)
+                    .coerceIn(MIN_APP_ICON_SIZE_STEP, MAX_APP_ICON_SIZE_STEP)
+
+    fun setAppIconSizeStep(step: Int) {
+        prefs
+                .edit()
+                .putInt(
+                        KEY_APP_ICON_SIZE_STEP,
+                        step.coerceIn(MIN_APP_ICON_SIZE_STEP, MAX_APP_ICON_SIZE_STEP),
+                )
+                .apply()
+    }
+
     fun isAiSearchSetupExpanded(): Boolean =
             getBooleanPref(UiPreferences.KEY_AI_SEARCH_SETUP_EXPANDED, true)
 
@@ -924,7 +938,14 @@ class UiPreferences(
         const val KEY_WALLPAPER_ACCENT_ENABLED = "wallpaper_accent_enabled"
         const val KEY_SHOW_APP_LABELS = "show_app_labels"
         const val KEY_PHONE_APP_GRID_COLUMNS = "phone_app_grid_columns"
+        const val KEY_APP_ICON_SIZE_STEP = "app_icon_size_step"
         const val DEFAULT_PHONE_APP_GRID_COLUMNS = 4
+        const val MIN_APP_ICON_SIZE_STEP = 0
+        const val MAX_APP_ICON_SIZE_STEP = 6
+        const val DEFAULT_APP_ICON_SIZE_STEP = MAX_APP_ICON_SIZE_STEP
+        private const val APP_ICON_SIZE_PERCENT_DELTA = 5
+        private const val MIN_APP_ICON_SIZE_PERCENT = 70
+        private const val MAX_APP_ICON_SIZE_PERCENT = 100
         const val DEFAULT_TOP_MATCHES_LIMIT = 3
         val TOP_MATCHES_LIMIT_OPTIONS = listOf(1, 3, 5)
         val DEFAULT_TOP_MATCHES_SECTION_ORDER: List<SearchSection>
@@ -1019,5 +1040,14 @@ class UiPreferences(
 
         // In-app update session tracking keys
         const val KEY_UPDATE_CHECK_SHOWN_THIS_SESSION = "update_check_shown_this_session"
+
+        fun appIconSizeScale(step: Int): Float {
+            val normalized = step.coerceIn(MIN_APP_ICON_SIZE_STEP, MAX_APP_ICON_SIZE_STEP)
+            val percent =
+                    MIN_APP_ICON_SIZE_PERCENT + (normalized * APP_ICON_SIZE_PERCENT_DELTA)
+            return percent / MAX_APP_ICON_SIZE_PERCENT.toFloat()
+        }
+
+        fun appIconSizePercent(step: Int): Int = (appIconSizeScale(step) * 100).toInt()
     }
 }

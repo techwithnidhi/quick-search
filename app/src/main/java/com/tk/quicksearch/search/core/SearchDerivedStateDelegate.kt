@@ -337,6 +337,7 @@ internal class SearchDerivedStateDelegate(
                     showAppLabels = config.showAppLabels,
                     appSuggestionsEnabled = config.appSuggestionsEnabled,
                     phoneAppGridColumns = config.phoneAppGridColumns,
+                    appIconSizeStep = config.appIconSizeStep,
                     suggestedApps = startupSuggestions,
                 )
             startupSurfaceStore.saveSnapshot(snapshot)

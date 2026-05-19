@@ -107,6 +107,12 @@ internal class SearchViewModelPreferencesStateAccess(
             state.phoneAppGridColumns = value
         }
 
+    override var appIconSizeStep: Int
+        get() = state.appIconSizeStep
+        set(value) {
+            state.appIconSizeStep = value
+        }
+
     override var appIconShape: AppIconShape
         get() = state.appIconShape
         set(value) {

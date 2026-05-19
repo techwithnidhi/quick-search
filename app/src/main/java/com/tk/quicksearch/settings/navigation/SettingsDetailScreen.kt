@@ -364,6 +364,12 @@ internal fun SettingsDetailLevel1Screen(
                                     SettingsCommand.PhoneAppGridColumns(columns),
                                 )
                             },
+                            appIconSizeStep = state.appIconSizeStep,
+                            onSetAppIconSizeStep = { step ->
+                                callbacks.onApplySettingsCommand(
+                                    SettingsCommand.AppIconSizeStep(step),
+                                )
+                            },
                             onSelectIconPack = { packageName ->
                                 callbacks.onApplySettingsCommand(
                                     SettingsCommand.IconPackPackageSetting(packageName),

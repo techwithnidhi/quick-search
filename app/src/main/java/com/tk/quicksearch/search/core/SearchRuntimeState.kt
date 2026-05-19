@@ -1,6 +1,7 @@
 package com.tk.quicksearch.search.core
 
 import com.tk.quicksearch.search.data.StartupPreferencesFacade
+import com.tk.quicksearch.search.data.preferences.UiPreferences
 import com.tk.quicksearch.search.models.AppInfo
 import com.tk.quicksearch.search.models.FileType
 import java.util.concurrent.atomic.AtomicBoolean
@@ -32,6 +33,7 @@ internal data class SearchRuntimeState(
     var appSuggestionsEnabled: Boolean = true,
     var showAppLabels: Boolean = true,
     var phoneAppGridColumns: Int,
+    var appIconSizeStep: Int = UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
     var appIconShape: AppIconShape = AppIconShape.DEFAULT,
     var launcherAppIcon: LauncherAppIcon = LauncherAppIcon.DEFAULT,
     var themedIconsEnabled: Boolean = false,

@@ -170,6 +170,7 @@ private fun renderAppsSection(
             disabledShortcutIds = appsParams.disabledAppShortcutIds,
             rowCount = appsParams.rowCount,
             phoneColumnOverride = appsParams.phoneColumnOverride,
+            appIconSizeStep = appsParams.appIconSizeStep,
             iconPackPackage = appsParams.iconPackPackage,
             appIconShape = appsParams.appIconShape,
             themedIconsEnabled = appsParams.themedIconsEnabled,

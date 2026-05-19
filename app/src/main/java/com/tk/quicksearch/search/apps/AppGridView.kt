@@ -86,6 +86,7 @@ import com.tk.quicksearch.search.core.StartupPhase
 import com.tk.quicksearch.search.data.AppShortcutRepository.StaticShortcut
 import com.tk.quicksearch.search.data.AppShortcutRepository.launchStaticShortcut
 import com.tk.quicksearch.search.data.AppShortcutRepository.shortcutKey
+import com.tk.quicksearch.search.data.preferences.UiPreferences
 import com.tk.quicksearch.search.models.AppInfo
 import com.tk.quicksearch.search.searchScreen.PredictedSubmitTarget
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
@@ -193,6 +194,7 @@ fun AppGridView(
         modifier: Modifier = Modifier,
         rowCount: Int = ROW_COUNT,
         phoneColumnOverride: Int = 5,
+        appIconSizeStep: Int = UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
         iconPackPackage: String? = null,
         showAppLabels: Boolean = true,
         oneHandedMode: Boolean = false,
@@ -455,6 +457,7 @@ fun AppGridView(
                                 shortcutsByPackage = shortcutsByPackage,
                                 rowCount = rowCount,
                                 phoneColumnOverride = phoneColumnOverride,
+                                appIconSizeStep = appIconSizeStep,
                                 iconPackPackage = iconPackPackage,
                                 showAppLabels = showAppLabels,
                                 oneHandedMode = oneHandedMode,
@@ -486,6 +489,7 @@ fun AppGridView(
                             shortcutsByPackage = shortcutsByPackage,
                             rowCount = rowCount,
                             phoneColumnOverride = phoneColumnOverride,
+                            appIconSizeStep = appIconSizeStep,
                             iconPackPackage = iconPackPackage,
                             showAppLabels = showAppLabels,
                             oneHandedMode = oneHandedMode,
@@ -615,6 +619,7 @@ private fun AppGrid(
         shortcutsByPackage: Map<String, List<StaticShortcut>>,
         rowCount: Int = ROW_COUNT,
         phoneColumnOverride: Int = 5,
+        appIconSizeStep: Int = UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
         iconPackPackage: String?,
         showAppLabels: Boolean,
         oneHandedMode: Boolean,
@@ -813,6 +818,7 @@ private fun AppGrid(
                             iconPackPackage = iconPackPackage,
                             isPredicted = app.launchCountKey() == firstResultKey,
                             oneHandedMode = oneHandedMode,
+                            appIconSizeStep = appIconSizeStep,
                             appIconShape = appIconShape,
                             themedIconsEnabled = themedIconsEnabled,
                             showWallpaperBackground = showWallpaperBackground,
@@ -854,6 +860,7 @@ private fun AppGridItem(
         iconPackPackage: String?,
         isPredicted: Boolean = false,
         oneHandedMode: Boolean = false,
+        appIconSizeStep: Int = UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
         appIconShape: AppIconShape = AppIconShape.DEFAULT,
         themedIconsEnabled: Boolean = true,
         showWallpaperBackground: Boolean = false,
@@ -889,7 +896,8 @@ private fun AppGridItem(
             )
     var showOptions by remember { mutableStateOf(false) }
     val appIconSize =
-            remember(appState.isOverlayPresentation) {
+            remember(appState.isOverlayPresentation, appIconSizeStep) {
+                val sizeScale = UiPreferences.appIconSizeScale(appIconSizeStep)
                 when (
                     if (appState.isOverlayPresentation) {
                         AppIconDisplayMode.OVERLAY
@@ -897,16 +905,17 @@ private fun AppGridItem(
                         AppIconDisplayMode.REGULAR
                     }
                 ) {
-                    AppIconDisplayMode.OVERLAY -> OverlayAppIconSize
-                    AppIconDisplayMode.REGULAR -> RegularAppIconSize
+                    AppIconDisplayMode.OVERLAY -> OverlayAppIconSize * sizeScale
+                    AppIconDisplayMode.REGULAR -> RegularAppIconSize * sizeScale
                 }
             }
     val appIconSurfaceSize =
-            remember(appState.isOverlayPresentation) {
+            remember(appState.isOverlayPresentation, appIconSizeStep) {
+                val sizeScale = UiPreferences.appIconSizeScale(appIconSizeStep)
                 if (appState.isOverlayPresentation) {
-                    OverlayAppIconSurfaceSize
+                    OverlayAppIconSurfaceSize * sizeScale
                 } else {
-                    DesignTokens.AppIconSize
+                    DesignTokens.AppIconSize * sizeScale
                 }
             }
     val indicatorAlpha = if (isPredicted) 1f else 0f

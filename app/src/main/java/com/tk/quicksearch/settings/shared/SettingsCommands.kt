@@ -36,6 +36,8 @@ sealed interface SettingsCommand {
 
     data class PhoneAppGridColumns(val columns: Int) : SettingsCommand
 
+    data class AppIconSizeStep(val step: Int) : SettingsCommand
+
     data class SearchEngineCompactRowCount(val rowCount: Int) : SettingsCommand
 
     data class FontScaleMultiplier(val multiplier: Float) : SettingsCommand
@@ -134,6 +136,7 @@ internal fun SearchViewModel.applySettingsCommand(command: SettingsCommand) {
         is SettingsCommand.TopMatchesSectionEnabled ->
             setTopMatchesSectionEnabled(command.section, command.enabled)
         is SettingsCommand.PhoneAppGridColumns -> setPhoneAppGridColumns(command.columns)
+        is SettingsCommand.AppIconSizeStep -> setAppIconSizeStep(command.step)
         is SettingsCommand.SearchEngineCompactRowCount ->
             setSearchEngineCompactRowCount(command.rowCount)
         is SettingsCommand.FontScaleMultiplier -> setFontScaleMultiplier(command.multiplier)

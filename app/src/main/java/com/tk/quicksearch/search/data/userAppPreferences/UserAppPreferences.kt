@@ -1152,6 +1152,10 @@ class UserAppPreferences(
 
     fun setPhoneAppGridColumns(columns: Int) = uiPreferences.setPhoneAppGridColumns(columns)
 
+    fun getAppIconSizeStep(): Int = uiPreferences.getAppIconSizeStep()
+
+    fun setAppIconSizeStep(step: Int) = uiPreferences.setAppIconSizeStep(step)
+
     fun areWebSuggestionsEnabled(): Boolean = uiPreferences.areWebSuggestionsEnabled()
 
     fun getWebSuggestionsCount(): Int = uiPreferences.getWebSuggestionsCount()

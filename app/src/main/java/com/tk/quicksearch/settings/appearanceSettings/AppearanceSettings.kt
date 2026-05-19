@@ -67,6 +67,8 @@ fun AppearanceSettingsSection(
         onToggleAppLabels: (Boolean) -> Unit,
         phoneAppGridColumns: Int = com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_PHONE_APP_GRID_COLUMNS,
         onSetPhoneAppGridColumns: (Int) -> Unit = {},
+        appIconSizeStep: Int = com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
+        onSetAppIconSizeStep: (Int) -> Unit = {},
         onSelectIconPack: (String?) -> Unit,
         onSetMaskUnsupportedIconPackIcons: (Boolean) -> Unit,
         onRefreshIconPacks: () -> Unit,
@@ -191,6 +193,8 @@ fun AppearanceSettingsSection(
                 onToggleAppLabels = onToggleAppLabels,
                 phoneAppGridColumns = phoneAppGridColumns,
                 onSetPhoneAppGridColumns = onSetPhoneAppGridColumns,
+                appIconSizeStep = appIconSizeStep,
+                onSetAppIconSizeStep = onSetAppIconSizeStep,
                 iconPackTitle =
                         androidx.compose.ui.res.stringResource(R.string.settings_icon_pack_title),
                 iconPackDescription =

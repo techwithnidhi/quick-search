@@ -360,6 +360,8 @@
     <string name="settings_app_columns_4">4</string>
     <string name="settings_app_columns_5">5</string>
     <string name="settings_app_columns_title">Apps Per Row</string>
+    <string name="settings_app_icon_size_title">App Icon Size</string>
+    <string name="settings_app_icon_size_percent">%1$d%%</string>
     <string name="settings_app_info_install_date">Install Date</string>
     <string name="settings_app_info_last_update">Last Update</string>
     <string name="settings_app_info_minimum_sdk">Minimum SDK</string>

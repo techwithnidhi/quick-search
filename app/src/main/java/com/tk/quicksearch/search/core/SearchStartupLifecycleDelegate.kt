@@ -44,6 +44,7 @@ internal data class SearchStartupPreferencesSnapshot(
     val appTheme: AppTheme,
     val overlayThemeIntensity: Float,
     val useSystemFont: Boolean,
+    val appIconSizeStep: Int,
     val appIconShape: AppIconShape,
     val launcherAppIcon: LauncherAppIcon,
     val themedIconsEnabled: Boolean,
@@ -66,6 +67,7 @@ internal data class SearchLoadedPreferencesSnapshot(
     val enabledAppSuggestionTabs: Set<AppSuggestionTabType>,
     val showAppLabels: Boolean,
     val phoneAppGridColumns: Int,
+    val appIconSizeStep: Int,
     val appIconShape: AppIconShape,
     val launcherAppIcon: LauncherAppIcon,
     val themedIconsEnabled: Boolean,
@@ -353,10 +355,11 @@ internal class SearchStartupLifecycleDelegate(
                     showSearchBarWelcomeAnimation = shouldShowSearchBarWelcome(),
                     appSuggestionsEnabled = userPreferences.areAppSuggestionsEnabled(),
                     selectedAppSuggestionTab = userPreferences.getSelectedAppSuggestionTab(),
-                    enabledAppSuggestionTabs = userPreferences.getEnabledAppSuggestionTabs(),
-                    showAppLabels = userPreferences.shouldShowAppLabels(),
-                    phoneAppGridColumns = userPreferences.getPhoneAppGridColumns(),
-                    bottomSearchBarEnabled = userPreferences.isBottomSearchBarEnabled(),
+                enabledAppSuggestionTabs = userPreferences.getEnabledAppSuggestionTabs(),
+                showAppLabels = userPreferences.shouldShowAppLabels(),
+                phoneAppGridColumns = userPreferences.getPhoneAppGridColumns(),
+                appIconSizeStep = userPreferences.getAppIconSizeStep(),
+                bottomSearchBarEnabled = userPreferences.isBottomSearchBarEnabled(),
                     topResultIndicatorEnabled = userPreferences.isTopResultIndicatorEnabled(),
                     openKeyboardOnLaunch = userPreferences.isOpenKeyboardOnLaunchEnabled(),
                     clearQueryOnLaunch = userPreferences.isClearQueryOnLaunchEnabled(),
@@ -577,6 +580,7 @@ internal class SearchStartupLifecycleDelegate(
                 enabledAppSuggestionTabs = snapshot.enabledAppSuggestionTabs,
                 showAppLabels = snapshot.showAppLabels,
                 phoneAppGridColumns = snapshot.phoneAppGridColumns,
+                appIconSizeStep = snapshot.appIconSizeStep,
                 appIconShape = snapshot.appIconShape,
                 launcherAppIcon = snapshot.launcherAppIcon,
                 themedIconsEnabled = snapshot.themedIconsEnabled,
@@ -754,6 +758,8 @@ internal class SearchStartupLifecycleDelegate(
         val labelsEnabled = startupPrefs?.showAppLabels ?: userPreferences.shouldShowAppLabels()
         val columnsForPhone =
             startupPrefs?.phoneAppGridColumns ?: userPreferences.getPhoneAppGridColumns()
+        val appIconSizeStep =
+            startupPrefs?.appIconSizeStep ?: userPreferences.getAppIconSizeStep()
 
         updateResultsState {
             it.copy(
@@ -777,6 +783,7 @@ internal class SearchStartupLifecycleDelegate(
                 enabledAppSuggestionTabs = userPreferences.getEnabledAppSuggestionTabs(),
                 showAppLabels = labelsEnabled,
                 phoneAppGridColumns = columnsForPhone,
+                appIconSizeStep = appIconSizeStep,
                 isStartupCoreSurfaceReady = true,
             )
         }

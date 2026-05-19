@@ -82,6 +82,7 @@ internal fun buildSettingsScreenCallbacks(
         onRefreshIconPacks = viewModel::refreshIconPacks,
         onToggleAppLabels = viewModel::setShowAppLabels,
         onSetPhoneAppGridColumns = viewModel::setPhoneAppGridColumns,
+        onSetAppIconSizeStep = viewModel::setAppIconSizeStep,
         onSetAppIconShape = viewModel::setAppIconShape,
         onSetLauncherAppIcon = viewModel::setLauncherAppIcon,
         onToggleThemedIcons = viewModel::setThemedIconsEnabled,

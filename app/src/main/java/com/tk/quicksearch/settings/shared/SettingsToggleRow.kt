@@ -42,6 +42,7 @@ data class SettingsToggleSliderDetails(
     val valueRange: ClosedFloatingPointRange<Float>,
     val valueLabel: String,
     val steps: Int = 0,
+    val valueLabelWidth: Dp = DesignTokens.SpacingXXLarge,
 )
 
 /**
@@ -61,6 +62,7 @@ fun SettingsToggleRow(
     titleContent: (@Composable () -> Unit)? = null,
     subtitleContent: (@Composable () -> Unit)? = null,
     sliderDetails: SettingsToggleSliderDetails? = null,
+    showSwitch: Boolean = true,
     leadingIcon: ImageVector? = null,
     titleTextStyle: TextStyle = MaterialTheme.typography.titleMedium,
     horizontalPadding: Dp = DesignTokens.SpacingXXLarge,
@@ -173,7 +175,7 @@ fun SettingsToggleRow(
                             text = sliderDetails.valueLabel,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(DesignTokens.SpacingXXLarge),
+                            modifier = Modifier.width(sliderDetails.valueLabelWidth),
                         )
                     }
                 } else {
@@ -194,18 +196,20 @@ fun SettingsToggleRow(
                 }
             }
 
-            Switch(
-                checked = checked,
-                onCheckedChange = onToggle,
-                enabled = enabled,
-                modifier = Modifier.scale(0.85f),
-                colors =
-                    SwitchDefaults.colors(
-                        uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                        uncheckedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    ),
-            )
+            if (showSwitch) {
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onToggle,
+                    enabled = enabled,
+                    modifier = Modifier.scale(0.85f),
+                    colors =
+                        SwitchDefaults.colors(
+                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                            uncheckedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        ),
+                )
+            }
         }
 
         if (showTipBanner && !tipBannerText.isNullOrBlank()) {

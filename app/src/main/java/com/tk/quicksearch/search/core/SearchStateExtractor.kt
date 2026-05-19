@@ -159,6 +159,7 @@ internal object SearchStateExtractor {
             useSystemFont = s.useSystemFont,
             showAppLabels = s.showAppLabels,
             phoneAppGridColumns = s.phoneAppGridColumns,
+            appIconSizeStep = s.appIconSizeStep,
             appIconShape = s.appIconShape,
             launcherAppIcon = s.launcherAppIcon,
             themedIconsEnabled = s.themedIconsEnabled,

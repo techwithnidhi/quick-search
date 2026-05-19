@@ -18,19 +18,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.tk.quicksearch.R
 import com.tk.quicksearch.search.core.AppIconShape
 import com.tk.quicksearch.search.data.preferences.UiPreferences
 import com.tk.quicksearch.settings.shared.SettingsCard
+import com.tk.quicksearch.settings.shared.SettingsToggleSliderDetails
 import com.tk.quicksearch.settings.shared.SettingsToggleRow
 import com.tk.quicksearch.shared.ui.theme.AppColors
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
+import com.tk.quicksearch.shared.util.hapticToggle
 import com.tk.quicksearch.shared.util.isTablet
 
 /** Card for app grid columns, app labels, icon pack, and icon appearance settings. */
@@ -40,6 +47,8 @@ fun AppIconCard(
         onToggleAppLabels: (Boolean) -> Unit,
         phoneAppGridColumns: Int = UiPreferences.DEFAULT_PHONE_APP_GRID_COLUMNS,
         onSetPhoneAppGridColumns: (Int) -> Unit = {},
+        appIconSizeStep: Int = UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
+        onSetAppIconSizeStep: (Int) -> Unit = {},
         iconPackTitle: String,
         iconPackDescription: String,
         onIconPackClick: () -> Unit,
@@ -48,8 +57,46 @@ fun AppIconCard(
         onSetAppIconShape: (AppIconShape) -> Unit,
         modifier: Modifier = Modifier,
 ) {
+    val view = LocalView.current
+    var lastIconSizeStep by remember { mutableStateOf(appIconSizeStep) }
+    LaunchedEffect(appIconSizeStep) {
+        lastIconSizeStep = appIconSizeStep
+    }
+
     SettingsCard(modifier = modifier.fillMaxWidth()) {
         Column {
+            SettingsToggleRow(
+                    title = stringResource(R.string.settings_app_icon_size_title),
+                    checked = true,
+                    onCheckedChange = {},
+                    sliderDetails =
+                            SettingsToggleSliderDetails(
+                                    value = appIconSizeStep.toFloat(),
+                                    onValueChange = { value ->
+                                        val step = value.toInt()
+                                        if (step != lastIconSizeStep) {
+                                            hapticToggle(view)()
+                                            lastIconSizeStep = step
+                                        }
+                                        onSetAppIconSizeStep(step)
+                                    },
+                                    valueRange =
+                                            UiPreferences.MIN_APP_ICON_SIZE_STEP.toFloat()..
+                                                    UiPreferences.MAX_APP_ICON_SIZE_STEP.toFloat(),
+                                    steps =
+                                            UiPreferences.MAX_APP_ICON_SIZE_STEP -
+                                                    UiPreferences.MIN_APP_ICON_SIZE_STEP - 1,
+                                    valueLabel =
+                                            stringResource(
+                                                    R.string.settings_app_icon_size_percent,
+                                                    UiPreferences.appIconSizePercent(appIconSizeStep),
+                                            ),
+                                    valueLabelWidth = 44.dp,
+                            ),
+                    isFirstItem = true,
+                    showSwitch = false,
+            )
+
             if (!isTablet()) {
                 AppColumnsSelector(
                         selectedColumns = phoneAppGridColumns,
@@ -64,7 +111,7 @@ fun AppIconCard(
                     checked = showAppLabels,
                     onCheckedChange = onToggleAppLabels,
                     extraVerticalPadding = 8.dp,
-                    isFirstItem = isTablet(),
+                    isFirstItem = false,
                     showDivider = false,
             )
 

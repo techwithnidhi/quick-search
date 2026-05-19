@@ -25,6 +25,7 @@ internal class SearchViewModelLegacyPreferenceState(
     var appSuggestionsEnabled: Boolean = true
     var showAppLabels: Boolean = true
     var phoneAppGridColumns: Int = UiPreferences.DEFAULT_PHONE_APP_GRID_COLUMNS
+    var appIconSizeStep: Int = UiPreferences.DEFAULT_APP_ICON_SIZE_STEP
     var appIconShape: AppIconShape = AppIconShape.DEFAULT
     var launcherAppIcon: LauncherAppIcon = LauncherAppIcon.DEFAULT
     var themedIconsEnabled: Boolean = false
@@ -68,6 +69,7 @@ internal class SearchViewModelLegacyPreferenceState(
         appSuggestionsEnabled = prefCache.appSuggestionsEnabled
         showAppLabels = prefCache.showAppLabels
         phoneAppGridColumns = prefCache.phoneAppGridColumns
+        appIconSizeStep = prefCache.appIconSizeStep
         appIconShape = prefCache.appIconShape
         launcherAppIcon = prefCache.launcherAppIcon
         themedIconsEnabled = prefCache.themedIconsEnabled

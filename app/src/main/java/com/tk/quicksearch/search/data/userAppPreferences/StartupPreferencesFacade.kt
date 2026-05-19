@@ -63,6 +63,7 @@ class StartupPreferencesFacade(
             val wallpaperAccentEnabled: Boolean = true,
             val maskUnsupportedIconPackIcons: Boolean = false,
             val phoneAppGridColumns: Int = com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_PHONE_APP_GRID_COLUMNS,
+            val appIconSizeStep: Int = com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
     )
 
     /**
@@ -463,6 +464,20 @@ class StartupPreferencesFacade(
                         ] as?
                                 Boolean
                                 ?: false,
+                phoneAppGridColumns =
+                        allPrefs[
+                                com.tk.quicksearch.search.data.preferences.UiPreferences
+                                        .KEY_PHONE_APP_GRID_COLUMNS,
+                        ] as?
+                                Int
+                                ?: com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_PHONE_APP_GRID_COLUMNS,
+                appIconSizeStep =
+                        allPrefs[
+                                com.tk.quicksearch.search.data.preferences.UiPreferences
+                                        .KEY_APP_ICON_SIZE_STEP,
+                        ] as?
+                                Int
+                                ?: com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
         )
     }
 
@@ -856,6 +871,13 @@ class StartupPreferencesFacade(
                                 ] as?
                                         Int
                                         ?: com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_PHONE_APP_GRID_COLUMNS,
+                        appIconSizeStep =
+                                allPrefs[
+                                        com.tk.quicksearch.search.data.preferences.UiPreferences
+                                                .KEY_APP_ICON_SIZE_STEP,
+                                ] as?
+                                        Int
+                                        ?: com.tk.quicksearch.search.data.preferences.UiPreferences.DEFAULT_APP_ICON_SIZE_STEP,
                 )
 
         return StartupConfig(

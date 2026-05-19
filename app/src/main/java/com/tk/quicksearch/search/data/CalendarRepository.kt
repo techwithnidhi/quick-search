@@ -56,8 +56,14 @@ class CalendarRepository(
         val normalizedQuery = SearchTextNormalizer.normalizeForSearch(query.trim())
         if (normalizedQuery.isBlank()) return emptyList()
 
-        val candidates = queryEventsAroundNow(now = now, limit = MAX_EVENT_SEARCH_CANDIDATES)
         val todayStartMillis = startOfTodayMillis()
+        val nearestInstanceAnchorMillis = if (includePastEvents) now else todayStartMillis
+        val candidates =
+            queryEventsAroundNow(
+                now = now,
+                limit = MAX_EVENT_SEARCH_CANDIDATES,
+                nearestInstanceAnchorMillis = nearestInstanceAnchorMillis,
+            )
 
         return candidates
             .asSequence()
@@ -188,6 +194,7 @@ class CalendarRepository(
         now: Long,
         limit: Int,
         eventIds: Set<Long>? = null,
+        nearestInstanceAnchorMillis: Long = now,
     ): List<CalendarEventInfo> {
         if (limit <= 0) return emptyList()
 
@@ -196,7 +203,11 @@ class CalendarRepository(
         val rows = queryInstancesInWindow(windowStart, windowEnd, limit * 8, eventIds)
         if (rows.isEmpty()) return emptyList()
 
-        val nearestInstances = selectNearestInstancePerEvent(rows, now)
+        val nearestInstances =
+            selectNearestInstancePerEvent(
+                instances = rows,
+                anchorMillis = nearestInstanceAnchorMillis,
+            )
         return nearestInstances.values
             .sortedWith(
                 compareBy<CalendarEventInfo> { eventDistanceToNow(it.startMillis, now) }
@@ -291,11 +302,12 @@ class CalendarRepository(
 
     private fun selectNearestInstancePerEvent(
         instances: List<CalendarEventInfo>,
-        now: Long,
+        anchorMillis: Long,
     ): Map<Long, CalendarEventInfo> =
         instances.groupBy { it.eventId }
             .mapValues { (_, candidates) ->
-                val nearestFuture = candidates.filter { it.startMillis >= now }.minByOrNull { it.startMillis }
+                val nearestFuture =
+                    candidates.filter { it.startMillis >= anchorMillis }.minByOrNull { it.startMillis }
                 nearestFuture ?: candidates.maxByOrNull { it.startMillis } ?: candidates.first()
             }
 

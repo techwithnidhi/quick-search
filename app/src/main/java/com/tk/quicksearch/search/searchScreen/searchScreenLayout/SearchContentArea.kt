@@ -129,7 +129,9 @@ fun SearchContentArea(
     aiSearchState: AiSearchState? = null,
     isOverlayPresentation: Boolean = false,
     onOpenPermissionsSettings: () -> Unit = {},
+    isDefaultLauncher: Boolean = false,
     onBottomOneHandedOverscrollUp: () -> Unit = {},
+    onLauncherOverscrollDown: () -> Unit = {},
 ) {
     val useOneHandedMode =
         state.oneHandedMode &&
@@ -275,8 +277,14 @@ fun SearchContentArea(
                 !shouldHideScrollView && scrollState.maxValue > 0
             val bottomOneHandedOverscrollEnabled =
                 state.bottomSearchBarEnabled && useOneHandedMode && alignResultsToBottom
+            val launcherOverscrollDownEnabled = isDefaultLauncher
             val bottomOneHandedOverscrollConnection =
-                remember(bottomOneHandedOverscrollEnabled, onBottomOneHandedOverscrollUp) {
+                remember(
+                    bottomOneHandedOverscrollEnabled,
+                    launcherOverscrollDownEnabled,
+                    onBottomOneHandedOverscrollUp,
+                    onLauncherOverscrollDown,
+                ) {
                     object : NestedScrollConnection {
                         override fun onPostScroll(
                             consumed: Offset,
@@ -289,6 +297,13 @@ fun SearchContentArea(
                                     available.y < -OVERSCROLL_FOCUS_THRESHOLD_PX
                             ) {
                                 onBottomOneHandedOverscrollUp()
+                            }
+                            if (
+                                launcherOverscrollDownEnabled &&
+                                    source == NestedScrollSource.UserInput &&
+                                    available.y > OVERSCROLL_FOCUS_THRESHOLD_PX
+                            ) {
+                                onLauncherOverscrollDown()
                             }
                             return Offset.Zero
                         }

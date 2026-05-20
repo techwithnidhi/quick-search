@@ -79,6 +79,8 @@ import com.tk.quicksearch.shared.ui.theme.LocalSearchColorTheme
 import com.tk.quicksearch.shared.featureFlags.FeatureFlags
 import com.tk.quicksearch.tools.aiTools.CurrencyConversionIntentParser
 import com.tk.quicksearch.tools.aiTools.DictionaryIntentParser
+import com.tk.quicksearch.shared.util.isDefaultHomeApp
+import com.tk.quicksearch.shared.util.openNotificationShade
 import com.tk.quicksearch.tools.aiTools.WordClockIntentParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -180,6 +182,7 @@ internal fun SearchScreenContent(
             }
     val isImeVisible = WindowInsets.ime.getBottom(density) > 0
     val isCalculatorMode = state.calculatorState.isCalculatorMode
+    val isDefaultLauncher = context.isDefaultHomeApp()
     val isToolMode = state.calculatorState.isToolMode
     val isUnitConverterMode = state.calculatorState.isUnitConverterMode
     val activeToolType = if (isToolMode) state.calculatorState.toolType else null
@@ -987,9 +990,13 @@ internal fun SearchScreenContent(
                 showAiSearch = state.AiSearchState.status != AiSearchStatus.Idle,
                 aiSearchState = state.AiSearchState,
                 isOverlayPresentation = isOverlayPresentation,
+                isDefaultLauncher = isDefaultLauncher,
                 onBottomOneHandedOverscrollUp = {
                     searchFocusRequester.requestFocus()
                     keyboardController?.show()
+                },
+                onLauncherOverscrollDown = {
+                    context.openNotificationShade()
                 },
         )
 

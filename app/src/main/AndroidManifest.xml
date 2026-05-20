@@ -67,7 +67,30 @@
             android:shell="true"
             android:enabled="true" />
 
-        <!-- Main Activity -->
+        <!-- Home Activity: receives CATEGORY_HOME launches (home gesture / home
+             button when this app is the default launcher). Uses the opaque theme
+             variant so the Pixel home-gesture animation does not reveal the
+             previous launcher behind a translucent window. Behavior is
+             identical to MainActivity (it is a thin subclass). -->
+        <activity
+            android:name=".app.HomeActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.QuickSearch.Opaque"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Main Activity: handles every other entry point (share, web search,
+             ASSIST, process text, file view, app-icon launches from another
+             launcher via the activity-aliases below). Keeps the translucent
+             theme so it can sit on top of the previous app where appropriate. -->
         <activity
             android:name=".app.MainActivity"
             android:exported="true"
@@ -76,11 +99,6 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.QuickSearch"
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />

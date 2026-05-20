@@ -52,7 +52,7 @@ import com.tk.quicksearch.widgets.searchWidget.VoiceSearchHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
     private data class PendingContactActionPickerRequest(
         val contactId: Long,
         val isPrimary: Boolean,

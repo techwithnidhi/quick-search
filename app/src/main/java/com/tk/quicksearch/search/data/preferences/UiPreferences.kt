@@ -667,7 +667,7 @@ class UiPreferences(
     // ============================================================================
 
     fun areWebSuggestionsEnabled(): Boolean =
-            getBooleanPref(UiPreferences.KEY_WEB_SUGGESTIONS_ENABLED, true)
+            getBooleanPref(UiPreferences.KEY_WEB_SUGGESTIONS_ENABLED, DEFAULT_WEB_SUGGESTIONS_ENABLED)
 
     fun setWebSuggestionsEnabled(enabled: Boolean) {
         setBooleanPref(UiPreferences.KEY_WEB_SUGGESTIONS_ENABLED, enabled)

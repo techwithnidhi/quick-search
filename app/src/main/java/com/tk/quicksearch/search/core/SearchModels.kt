@@ -2,6 +2,7 @@ package com.tk.quicksearch.search.core
 
 import com.tk.quicksearch.search.contacts.models.ContactCardAction
 import com.tk.quicksearch.search.data.AppShortcutRepository.StaticShortcut
+import com.tk.quicksearch.search.data.preferences.DEFAULT_WEB_SUGGESTIONS_ENABLED
 import com.tk.quicksearch.search.data.preferences.UiPreferences
 import com.tk.quicksearch.search.appSettings.AppSettingResult
 import com.tk.quicksearch.search.deviceSettings.DeviceSetting
@@ -541,7 +542,7 @@ data class SearchUiState(
         // Section visibility preferences
         val disabledSections: Set<SearchSection> = emptySet(),
         // Web suggestions
-        val webSuggestionsEnabled: Boolean = true,
+        val webSuggestionsEnabled: Boolean = DEFAULT_WEB_SUGGESTIONS_ENABLED,
         val webSuggestionsCount: Int = 3,
         // Calculator / AI Search
         val calculatorEnabled: Boolean = true,

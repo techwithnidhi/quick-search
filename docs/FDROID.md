@@ -7,7 +7,7 @@ This project ships two **distribution flavors** from one codebase:
 | `standard` (default) | `assembleStandardRelease` | Google Play, GitHub releases |
 | `fdroid` | `assembleFdroidRelease` | [F-Droid](https://f-droid.org/) |
 
-The `standard` flavor keeps Google Play in-app review and in-app updates. The `fdroid` flavor uses the same app with no-op stubs and does not bundle Play Core libraries.
+The `standard` flavor keeps Google Play in-app review and in-app updates. The `fdroid` flavor uses the same app with no-op stubs, does not bundle Play Core libraries, uses the system font, and defaults web suggestions to off.
 
 ## Build locally
 
@@ -29,7 +29,7 @@ F-Droid reads listing text and graphics from:
 fastlane/metadata/android/en-US/
 ```
 
-When releasing, update `versionCode` / `versionName` in `app/build.gradle.kts`, add `changelogs/<versionCode>.txt`, and tag the release commit (e.g. `3.7`).
+When releasing, update `versionCode` / `versionName` in `app/build.gradle.kts`, add `changelogs/<versionCode>.txt`, and tag the release commit. If you keep the current F-Droid-specific tagging scheme, use tags like `3.7-fdroid`.
 
 ## Submit to F-Droid
 
@@ -49,10 +49,7 @@ When releasing, update `versionCode` / `versionName` in `app/build.gradle.kts`, 
          - fdroid
    ```
 
-4. **Anti-features** (expected) — declare in fdroiddata as appropriate:
-   - `Internet` — web search, optional AI, currency rates
-   - `NonFreeNet` — optional third-party AI/search APIs when the user adds keys
-   - `QueryAllPackages` — app search (launcher/search behavior)
+4. **Anti-features** (expected) — declare `NonFreeNet` for the optional proprietary network services this app can use (AI providers and user-enabled web suggestions/search integrations). F-Droid maintainers may request additional labels for optional proprietary app/service integrations depending on their review.
 
 5. **Test** — Use [fdroidserver](https://f-droid.org/en/docs/Installing_the_Server_and_Repo_Tools) or fdroiddata CI: `fdroid lint com.tk.quicksearch`, `fdroid build com.tk.quicksearch`.
 
@@ -62,7 +59,7 @@ When releasing, update `versionCode` / `versionName` in `app/build.gradle.kts`, 
 
 - [ ] Bump `versionCode` and `versionName` in `app/build.gradle.kts`
 - [ ] Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`
-- [ ] Tag the release commit
+- [ ] Tag the F-Droid release commit (current scheme: `<versionName>-fdroid`)
 - [ ] `./gradlew assembleFdroidRelease` succeeds
 - [ ] `./gradlew assembleStandardRelease` succeeds
 - [ ] Update fdroiddata `Builds` entry (or rely on auto-update after first inclusion)

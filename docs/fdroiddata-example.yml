@@ -16,16 +16,14 @@ Repo: https://github.com/teja2495/quick-search
 Builds:
   - versionName: '3.6'
     versionCode: 65
-    commit: REPLACE_WITH_RELEASE_TAG_COMMIT_SHA
+    commit: REPLACE_WITH_FDROID_RELEASE_TAG_OR_COMMIT_SHA
     gradle:
       - fdroid
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags ^v[0-9.]+$
+UpdateCheckMode: Tags ^[0-9.]+-fdroid$
 CurrentVersion: '3.6'
 CurrentVersionCode: 65
 
 AntiFeatures:
-  - Internet
   - NonFreeNet
-  - QueryAllPackages

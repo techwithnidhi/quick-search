@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "Quick Search"
 include(":app")
 include(":benchmark")
+include(":core")

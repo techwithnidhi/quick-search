@@ -23,6 +23,12 @@ android {
     defaultConfig {
         minSdk = 24
         consumerProguardFiles("consumer-rules.pro")
+        // Library modules do not generate app-level BuildConfig fields by default,
+        // but upstream :app source (e.g. CrashLogManager) reads them. Mirror the
+        // upstream :app values here so those call sites compile.
+        buildConfigField("String", "VERSION_NAME", "\"3.9\"")
+        buildConfigField("int", "VERSION_CODE", "69")
+        buildConfigField("String", "APPLICATION_ID", "\"com.tk.quicksearch\"")
     }
 
     sourceSets["main"].apply {

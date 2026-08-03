@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
     id("kotlin-parcelize")
 }
 
@@ -41,6 +42,7 @@ android {
         buildConfig = true
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -49,13 +51,19 @@ android {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Mirror upstream app/build.gradle.kts so all sources compile.
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     api(libs.androidx.core.ktx)
     api(libs.androidx.lifecycle.runtime.ktx)
     api(libs.androidx.lifecycle.runtime.compose)
     api(libs.androidx.lifecycle.viewmodel.compose)
     api(libs.androidx.activity.compose)
+    api(libs.androidx.appcompat)
     api(platform(libs.androidx.compose.bom))
     api(libs.androidx.ui)
     api(libs.androidx.ui.graphics)
@@ -72,6 +80,9 @@ dependencies {
     api(libs.libphonenumber)
     api(libs.reorderable)
     api(libs.androidx.browser)
+    api(libs.androidx.room.runtime)
+    api(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     // The upstream :app source references OssLicensesMenuActivity from this artifact.
     api(libs.play.services.oss.licenses)
     debugImplementation(libs.androidx.ui.tooling)

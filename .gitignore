@@ -18,6 +18,10 @@ release/
 
 # Gradle files
 .gradle/
+
+# :core wrapper — Room schema export dir (build artifact, not a source file; unlike
+# app/schemas/ upstream tracks, this one was never checked in by the wrapper).
+/core/schemas/
 .gradle-codex/
 .gradle-local/
 .gradle-home/

@@ -26,8 +26,8 @@ android {
         // Library modules do not generate app-level BuildConfig fields by default,
         // but upstream :app source (e.g. CrashLogManager) reads them. Mirror the
         // upstream :app values here so those call sites compile.
-        buildConfigField("String", "VERSION_NAME", "\"5.0\"")
-        buildConfigField("int", "VERSION_CODE", "104")
+        buildConfigField("String", "VERSION_NAME", "\"4.9\"")
+        buildConfigField("int", "VERSION_CODE", "103")
         // Upstream :app has a `distribution` flavor dimension; core consumes `standard`.
         buildConfigField("String", "FLAVOR", "\"standard\"")
         buildConfigField("String", "APPLICATION_ID", "\"com.tk.quicksearch\"")

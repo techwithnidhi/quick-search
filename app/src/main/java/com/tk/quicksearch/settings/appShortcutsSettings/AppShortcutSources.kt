@@ -19,7 +19,6 @@ data class AppShortcutSource(
     val label: String,
     val appLabel: String,
     val launchIntent: Intent,
-    val icon: ImageBitmap?,
     val sourceType: AppShortcutSourceType = AppShortcutSourceType.SHORTCUT_PROVIDER,
 )
 
@@ -54,18 +53,12 @@ fun queryAppShortcutSources(
             val className = resolveInfo.activityInfo.name
             val intent = Intent(Intent.ACTION_CREATE_SHORTCUT).setClassName(packageName, className)
             val label = resolveInfo.resolveLabel(packageManager)
-            val icon =
-                runCatching { resolveInfo.loadIcon(packageManager) }
-                    .getOrNull()
-                    ?.toBitmap(width = 96, height = 96)
-                    ?.asImageBitmap()
             AppShortcutSource(
                 packageName = packageName,
                 className = className,
                 label = label,
                 appLabel = repositoryAppLabelsByPackage[packageName] ?: resolveAppLabel(packageManager, packageName),
                 launchIntent = intent,
-                icon = icon,
                 sourceType = AppShortcutSourceType.SHORTCUT_PROVIDER,
             )
         }
@@ -83,12 +76,6 @@ fun queryAppShortcutSources(
         }
     val appActivitySources =
         appActivityPackages.map { (packageName, appLabel) ->
-            val appIcon =
-                runCatching {
-                    packageManager.getApplicationIcon(packageName)
-                }.getOrNull()
-                    ?.toBitmap(width = 96, height = 96)
-                    ?.asImageBitmap()
             AppShortcutSource(
                 packageName = packageName,
                 className = APP_ACTIVITY_SOURCE_CLASS_NAME,
@@ -99,7 +86,6 @@ fun queryAppShortcutSources(
                         addCategory(Intent.CATEGORY_LAUNCHER)
                         `package` = packageName
                     },
-                icon = appIcon,
                 sourceType = AppShortcutSourceType.APP_ACTIVITY,
             )
         }
@@ -133,8 +119,8 @@ fun queryAppActivitiesForPackage(
             val label =
                 activityInfo
                     .loadLabel(packageManager)
-                    ?.toString()
-                    ?.takeIf { it.isNotBlank() }
+                    .toString()
+                    .takeIf { it.isNotBlank() }
                     ?: resolvedClassName.substringAfterLast(".")
             AppActivitySource(
                 packageName = packageName,
@@ -198,7 +184,6 @@ private fun queryLaunchableApps(packageManager: PackageManager): List<ResolveInf
     return results
         .filter { it.activityInfo?.exported == true }
         .distinctBy { it.activityInfo?.packageName }
-        .sortedBy { info -> info.resolveLabel(packageManager).lowercase() }
 }
 
 
@@ -252,17 +237,16 @@ private fun queryShortcutSourceActivities(packageManager: PackageManager): List<
             packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
         }
 
-    return results
-        .filter { it.activityInfo?.exported == true }
-        .sortedBy { info -> info.resolveLabel(packageManager).lowercase() }
+    // Unsorted: filterAppShortcutSources orders the final list.
+    return results.filter { it.activityInfo?.exported == true }
 }
 
 private fun ResolveInfo.resolveLabel(packageManager: PackageManager): String {
     val packageName = activityInfo.packageName
     return (
         loadLabel(packageManager)
-            ?.toString()
-            ?.takeIf { it.isNotBlank() }
+            .toString()
+            .takeIf { it.isNotBlank() }
             ?: formatPackageNameAsLabel(packageName)
     )
 }
@@ -279,7 +263,7 @@ private fun resolveAppLabel(
     val appInfo = runCatching { packageManager.getApplicationInfo(packageName, 0) }.getOrNull()
     return appInfo
         ?.let { info ->
-            runCatching { packageManager.getApplicationLabel(info)?.toString() }.getOrNull()
+            runCatching { packageManager.getApplicationLabel(info).toString() }.getOrNull()
         }?.takeIf { it.isNotBlank() }
         ?: formatPackageNameAsLabel(packageName)
 }

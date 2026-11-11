@@ -7,16 +7,18 @@ import android.view.Window
 import android.view.ViewTreeObserver
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.tk.quicksearch.app.UpdateHelper
-import com.tk.quicksearch.app.HomeActivity
+import com.tk.quicksearch.app.MainActivity
 import com.tk.quicksearch.search.core.BackgroundSource
 import com.tk.quicksearch.search.core.SearchViewModel
 import com.tk.quicksearch.search.data.userAppPreferences.UserAppPreferences
 import com.tk.quicksearch.search.data.preferences.BootstrapPreferences
+import com.tk.quicksearch.searchEngines.AmazonRegionDetector
 import com.tk.quicksearch.shared.util.WallpaperUtils
 import com.tk.quicksearch.shared.util.MemoryDiagnostics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 enum class StartupMode {
@@ -85,6 +87,7 @@ class StartupCoordinator(
     }
 
     private fun scheduleMainPostFrameWork() {
+        scheduleAmazonRegionDetection()
         if (isFirstLaunch) return
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -121,6 +124,26 @@ class StartupCoordinator(
     }
 
     /**
+     * Once per install (new and existing users), default the Amazon engine to the user's regional
+     * storefront if they are still on the untouched amazon.com default.
+     */
+    private fun scheduleAmazonRegionDetection() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (userPreferences.hasDetectedAmazonRegion()) return@launch
+            val detectedDomain =
+                if (userPreferences.getAmazonDomain() == null) {
+                    AmazonRegionDetector.detectDomain(context)
+                } else {
+                    null
+                }
+            userPreferences.markAmazonRegionDetected()
+            if (detectedDomain != null) {
+                withContext(Dispatchers.Main) { viewModel.setAmazonDomain(detectedDomain) }
+            }
+        }
+    }
+
+    /**
      * Check shortly after the first frame so an available Play update can be represented by the
      * Home card without waiting for unrelated deferred startup work or an empty search query.
      */
@@ -150,7 +173,7 @@ class StartupCoordinator(
     private fun preloadWallpaperDivisor(): Int {
         val lightBlur = userPreferences.getWallpaperBlurRadius(isDarkMode = false)
         val darkBlur = userPreferences.getWallpaperBlurRadius(isDarkMode = true)
-        val showsSystemBackdrop = (activity as? HomeActivity)?.canShowSystemWallpaperBackdrop == true
+        val showsSystemBackdrop = (activity as? MainActivity)?.canShowSystemWallpaperBackdrop == true
         if (showsSystemBackdrop && lightBlur <= 0f && darkBlur <= 0f) {
             return WallpaperUtils.WALLPAPER_THUMBNAIL_DIVISOR
         }

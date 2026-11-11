@@ -109,7 +109,9 @@ enum class SearchSection {
         CALENDAR,
         REMINDERS,
         NOTES,
+        NOTED,
         APP_SETTINGS,
+        BOOKMARKS,
 }
 
 enum class MessagingApp {

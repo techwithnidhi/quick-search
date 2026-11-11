@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,7 +35,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -46,16 +44,24 @@ import com.tk.quicksearch.reminders.ReminderPermissions
 import com.tk.quicksearch.reminders.rememberMissingReminderPermissionRequester
 import com.tk.quicksearch.search.data.ReminderRepository
 import com.tk.quicksearch.search.data.preferences.ReminderPreferences
+import com.tk.quicksearch.search.models.NotedItem
 import com.tk.quicksearch.search.models.ReminderInfo
+import com.tk.quicksearch.search.noted.NotedAppIcon
+import com.tk.quicksearch.search.noted.NotedLauncher
+import com.tk.quicksearch.search.noted.NotedRepository
+import com.tk.quicksearch.search.noted.NotedTaskRelativeDateText
+import com.tk.quicksearch.search.noted.notedSubtitle
 import com.tk.quicksearch.search.reminders.ReminderRelativeDateText
 import com.tk.quicksearch.search.reminders.reminderScheduleLabel
 import com.tk.quicksearch.settings.appShortcutsSettings.shortcutMatchPriority
 import com.tk.quicksearch.settings.shared.SettingsCard
 import com.tk.quicksearch.settings.shared.SettingsToggleRow
+import com.tk.quicksearch.shared.ui.components.AppDropdownMenu
 import com.tk.quicksearch.shared.ui.icons.MaterialSymbols
 import com.tk.quicksearch.shared.ui.theme.AppColors
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -68,6 +74,26 @@ private enum class ReminderFilterOption(val labelResId: Int) {
     FUTURE(R.string.settings_reminders_filter_future),
 }
 
+/** A row on this page: a Quick Search reminder, or an open, dated task from the Noted app. */
+private sealed interface ReminderEntry {
+    val key: String
+    val day: LocalDate
+    val sortMillis: Long
+
+    data class Local(val reminder: ReminderInfo) : ReminderEntry {
+        override val key get() = "reminder:${reminder.reminderId}"
+        override val day get() = reminder.date
+        override val sortMillis get() = reminder.dueMillis
+    }
+
+    data class Noted(val item: NotedItem, override val day: LocalDate) : ReminderEntry {
+        override val key get() = "noted:${item.key}"
+        override val sortMillis: Long
+            get() = item.dueAtMillis?.takeIf { item.isDueTimeSet }
+                ?: day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }
+}
+
 @Composable
 fun RemindersSettingsSection(
     searchQuery: String = "",
@@ -76,6 +102,9 @@ fun RemindersSettingsSection(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val repository = remember(context) { ReminderRepository(context) }
+    val notedRepository = remember(context) { NotedRepository(context) }
+    // Noted changes outside this app, so its tasks reload whenever the page resumes.
+    var resumeCount by remember { mutableStateOf(0) }
     val reminderPreferences = remember(context) { ReminderPreferences(context) }
     val changeCount by ReminderRepository.changes.collectAsState()
     var includePastReminders by remember { mutableStateOf(reminderPreferences.getIncludePastReminders()) }
@@ -87,7 +116,10 @@ fun RemindersSettingsSection(
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) refreshPermissions()
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    refreshPermissions()
+                    resumeCount++
+                }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -95,6 +127,15 @@ fun RemindersSettingsSection(
 
     val reminders by produceState(initialValue = emptyList<ReminderInfo>(), changeCount) {
         value = withContext(Dispatchers.IO) { repository.getAllReminders() }
+    }
+    val notedTasks by produceState(initialValue = emptyList<ReminderEntry.Noted>(), changeCount, resumeCount) {
+        // Only while "Use Noted" is on; toggling it bumps changeCount, which reloads this.
+        value =
+            if (!reminderPreferences.isUseNotedEnabled()) {
+                emptyList()
+            } else {
+                notedRepository.dueTasks().mapNotNull { item -> item.dueDate()?.let { ReminderEntry.Noted(item, it) } }
+            }
     }
     val locale = Locale.getDefault()
     val normalizedQuery = remember(searchQuery, locale) { searchQuery.trim().lowercase(locale) }
@@ -105,31 +146,41 @@ fun RemindersSettingsSection(
     var selectedFilterOption by remember { mutableStateOf(ReminderFilterOption.ALL) }
     var isFilterMenuExpanded by remember { mutableStateOf(false) }
     val sortedReminders =
-        remember(reminders, normalizedQuery, locale, nowMillis) {
-            reminders
-                .filter { reminder ->
+        remember(reminders, notedTasks, normalizedQuery, locale, nowMillis) {
+            (reminders.map(ReminderEntry::Local) + notedTasks)
+                .filter { entry ->
+                    val title = when (entry) {
+                        is ReminderEntry.Local -> entry.reminder.title
+                        is ReminderEntry.Noted -> entry.item.title
+                    }
                     normalizedQuery.isBlank() ||
-                        shortcutMatchPriority(name = reminder.title, query = normalizedQuery, locale = locale) != null
+                        shortcutMatchPriority(name = title, query = normalizedQuery, locale = locale) != null
                 }
-                .sortedBy { it.dueMillis }
+                .sortedBy { it.sortMillis }
         }
     val displayedReminders =
         remember(sortedReminders, selectedFilterOption, normalizedQuery, nowMillis) {
             if (normalizedQuery.isNotBlank()) {
                 sortedReminders
             } else {
-                sortedReminders.filter { reminder ->
+                sortedReminders.filter { entry ->
+                    // Noted only shares open tasks, so they are never in Past.
+                    val isDone = entry is ReminderEntry.Local && entry.reminder.isDone
+                    val isOverdue = when (entry) {
+                        is ReminderEntry.Local -> entry.reminder.isOverdue(nowMillis)
+                        is ReminderEntry.Noted -> entry.item.isOverdue(nowMillis)
+                    }
                     when (selectedFilterOption) {
                         ReminderFilterOption.ALL -> true
-                        ReminderFilterOption.OVERDUE -> !reminder.isDone && reminder.isOverdue(nowMillis)
-                        ReminderFilterOption.PAST -> reminder.isDone
-                        ReminderFilterOption.FUTURE -> !reminder.isDone && !reminder.isOverdue(nowMillis)
+                        ReminderFilterOption.OVERDUE -> !isDone && isOverdue
+                        ReminderFilterOption.PAST -> isDone
+                        ReminderFilterOption.FUTURE -> !isDone && !isOverdue
                     }
                 }
             }
         }
     val todayIndex = remember(displayedReminders, today) {
-        displayedReminders.indexOfFirst { reminder -> reminder.date >= today }
+        displayedReminders.indexOfFirst { entry -> entry.day >= today }
     }
     LaunchedEffect(selectedFilterOption, normalizedQuery, todayIndex, displayedReminders.size) {
         val targetIndex =
@@ -226,12 +277,9 @@ fun RemindersSettingsSection(
                         tint = AppColors.Accent,
                     )
                 }
-                DropdownMenu(
+                AppDropdownMenu(
                     expanded = isFilterMenuExpanded,
                     onDismissRequest = { isFilterMenuExpanded = false },
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                    properties = PopupProperties(focusable = false),
-                    containerColor = AppColors.DialogBackground,
                 ) {
                     ReminderFilterOption.entries.forEachIndexed { index, option ->
                         if (index > 0) HorizontalDivider()
@@ -263,19 +311,29 @@ fun RemindersSettingsSection(
                     state = listState,
                     modifier = Modifier.fillMaxWidth().heightIn(max = screenHeight),
                 ) {
-                    itemsIndexed(items = displayedReminders, key = { _, reminder -> reminder.reminderId }) { index, reminder ->
-                        ReminderManagementRow(
-                            reminder = reminder,
-                            isPast = reminder.isDone,
-                            isOverdue = !reminder.isDone && reminder.isOverdue(nowMillis),
-                            onClick = { ReminderEditorRequests.openEdit(reminder) },
-                            onMarkDone = {
-                                scope.launch(Dispatchers.IO) { repository.setDone(reminder.reminderId, true) }
-                            },
-                            onDelete = {
-                                scope.launch(Dispatchers.IO) { repository.deleteReminder(reminder.reminderId) }
-                            },
-                        )
+                    itemsIndexed(items = displayedReminders, key = { _, entry -> entry.key }) { index, entry ->
+                        when (entry) {
+                            is ReminderEntry.Local -> {
+                                val reminder = entry.reminder
+                                ReminderManagementRow(
+                                    reminder = reminder,
+                                    isPast = reminder.isDone,
+                                    isOverdue = !reminder.isDone && reminder.isOverdue(nowMillis),
+                                    onClick = { ReminderEditorRequests.openEdit(reminder) },
+                                    onMarkDone = {
+                                        scope.launch(Dispatchers.IO) { repository.setDone(reminder.reminderId, true) }
+                                    },
+                                    onDelete = {
+                                        scope.launch(Dispatchers.IO) { repository.deleteReminder(reminder.reminderId) }
+                                    },
+                                )
+                            }
+                            is ReminderEntry.Noted ->
+                                NotedTaskManagementRow(
+                                    item = entry.item,
+                                    onClick = { NotedLauncher.open(context, entry.item) },
+                                )
+                        }
                         if (index < displayedReminders.lastIndex) {
                             HorizontalDivider(color = AppColors.SettingsDivider)
                         }
@@ -347,6 +405,46 @@ private fun ReminderManagementRow(
                         tint = AppColors.Accent,
                     )
                 }
+        }
+    }
+}
+
+/** A Noted task styled like [ReminderManagementRow]; it opens in Noted, which owns its actions. */
+@Composable
+private fun NotedTaskManagementRow(
+    item: NotedItem,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(
+                    horizontal = DesignTokens.CardHorizontalPadding,
+                    vertical = DesignTokens.CardVerticalPadding,
+                ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(DesignTokens.ItemRowSpacing),
+    ) {
+        NotedAppIcon(iconPackPackage = null, modifier = Modifier.size(DesignTokens.IconSize))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            notedSubtitle(item)?.let { schedule ->
+                Text(
+                    text = schedule,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            NotedTaskRelativeDateText(item)
         }
     }
 }

@@ -1,6 +1,9 @@
 package com.tk.quicksearch.widgets.atAGlanceWidget
 
 import android.app.AlarmManager
+import android.icu.text.MeasureFormat
+import android.icu.util.Measure
+import android.icu.util.MeasureUnit
 import android.content.Context
 import android.text.format.DateFormat
 import android.text.format.DateUtils
@@ -20,6 +23,7 @@ import com.tk.quicksearch.search.data.OtpNotifications
 import com.tk.quicksearch.search.data.ReminderRepository
 import com.tk.quicksearch.search.data.UpcomingAlarmRepository
 import com.tk.quicksearch.search.data.loadTodayGlanceEvents
+import com.tk.quicksearch.search.data.loadTomorrowGlanceEvents
 import com.tk.quicksearch.search.data.preferences.AppGlanceItemSettings
 import com.tk.quicksearch.search.data.preferences.CalendarPreferences
 import com.tk.quicksearch.search.data.preferences.GlanceItem
@@ -50,9 +54,6 @@ private const val MAX_WEATHER_ROWS = 2
 /** Tomorrow's events show from this hour of the evening, as on home. */
 private const val TOMORROW_EVENTS_START_HOUR = 21
 
-/** Tomorrow's first timed event shows only when it starts before this hour. */
-private const val TOMORROW_MORNING_END_HOUR = 12
-
 /** The upcoming alarm row shows from this long before the alarm, as on home. */
 private const val ALARM_LEAD_MILLIS = 45L * 60L * 1000L
 
@@ -62,6 +63,8 @@ private const val REMINDER_NOW_WINDOW_MILLIS = 60L * 1000L
 private const val MINUTE_MILLIS = 60L * 1000L
 private const val HOUR_MILLIS = 60L * MINUTE_MILLIS
 private const val DAY_MILLIS = 24L * HOUR_MILLIS
+
+private fun ceilMinutes(millis: Long): Long = (millis + MINUTE_MILLIS - 1L) / MINUTE_MILLIS
 
 /** A notification reads "Now" for this long after it is posted, as on home. */
 private const val JUST_NOW_MILLIS = 60L * 1000L
@@ -116,6 +119,7 @@ internal class AtAGlanceWidgetRowLoader(
     private val calendarPreferences = CalendarPreferences(context)
     private val hasNotificationAccess = NotificationDotsPermission.hasNotificationListenerAccess(context)
     private val timeFormat = DateFormat.getTimeFormat(context)
+    private val narrowDurationFormat = MeasureFormat.getInstance(Locale.getDefault(), MeasureFormat.FormatWidth.NARROW)
     private val appLabels = mutableMapOf<String, String>()
 
     /** Earliest time a row appears or disappears without any broadcast saying so. */
@@ -147,6 +151,35 @@ internal class AtAGlanceWidgetRowLoader(
         val step = if (abs(delta) >= HOUR_MILLIS) HOUR_MILLIS else MINUTE_MILLIS
         changesAt(if (delta >= 0) nowMillis + delta % step + 1 else nowMillis + step - (-delta) % step)
         return calendarRelativeTimeLabel(context.resources, targetMillis, nowMillis)
+    }
+
+    /**
+     * A call's or stopwatch's running time as "2m", "2h" or "2h 3m", refreshed when its
+     * minute count changes. Seconds would need a widget redraw every second, so they're left out.
+     */
+    fun elapsedDuration(sinceMillis: Long): String {
+        val elapsed = (nowMillis - sinceMillis).coerceAtLeast(0L)
+        changesAt(nowMillis + MINUTE_MILLIS - elapsed % MINUTE_MILLIS)
+        return durationLabel(elapsed / MINUTE_MILLIS)
+    }
+
+    /** A countdown's time left as [elapsedDuration] does, rounded up so "1m" stays until it ends. */
+    fun remainingDuration(untilMillis: Long): String {
+        val remaining = (untilMillis - nowMillis).coerceAtLeast(0L)
+        if (remaining > 0L) changesAt(nowMillis + (remaining - 1L) % MINUTE_MILLIS + 1L)
+        return durationLabel(ceilMinutes(remaining))
+    }
+
+    /** Compact "2h 3m", "2h" or "45m" in the locale's narrow unit style. */
+    fun durationLabel(totalMinutes: Long): String {
+        val hours = totalMinutes / 60L
+        val minutes = totalMinutes % 60L
+        val measures =
+            buildList {
+                if (hours > 0L) add(Measure(hours, MeasureUnit.HOUR))
+                if (minutes > 0L || hours == 0L) add(Measure(minutes, MeasureUnit.MINUTE))
+            }
+        return narrowDurationFormat.formatMeasures(*measures.toTypedArray())
     }
 
     fun appLabel(packageName: String): String =
@@ -219,6 +252,7 @@ internal class AtAGlanceWidgetRowLoader(
                         title = string(R.string.home_ongoing_call),
                         subtitle = call.caller ?: appLabel(call.packageName),
                         tap = AtAGlanceWidgetTap(AtAGlanceWidgetTapType.NOTIFICATION, key = call.key, packageName = call.packageName),
+                        pill = call.startTime?.let { AtAGlanceWidgetPill(elapsedDuration(it)) },
                         trailing =
                             listOfNotNull(
                                 AtAGlanceWidgetButton(
@@ -264,19 +298,19 @@ internal class AtAGlanceWidgetRowLoader(
                 GlanceNotificationsStore.timers.value.map { timer ->
                     val kind = string(if (timer.isCountDown) R.string.home_timer else R.string.home_stopwatch)
                     val paused = timer.pausedMillis
-                    // A ticking clock can't be kept current in a widget, so only a paused timer shows its
-                    // time as on home; a running one says when it ends.
+                    // Home's time without seconds, so the widget only redraws once a minute.
                     val title =
-                        if (paused != null) {
-                            DateUtils.formatElapsedTime(if (timer.isCountDown) (paused + 999L) / 1_000L else paused / 1_000L)
-                        } else {
-                            kind
+                        when {
+                            paused != null ->
+                                durationLabel(if (timer.isCountDown) ceilMinutes(paused) else paused / MINUTE_MILLIS)
+                            timer.isCountDown -> remainingDuration(timer.chronometerBase)
+                            else -> elapsedDuration(timer.chronometerBase)
                         }
                     val detail =
                         when {
                             paused != null -> "$kind • ${string(R.string.home_timer_paused)}"
-                            timer.isCountDown && timer.chronometerBase > nowMillis -> formatTime(timer.chronometerBase)
-                            else -> appLabel(timer.packageName)
+                            timer.isCountDown && timer.chronometerBase > nowMillis -> "$kind • ${formatTime(timer.chronometerBase)}"
+                            else -> "$kind • ${appLabel(timer.packageName)}"
                         }
                     notificationRow(
                         prefix = "timer",
@@ -285,7 +319,7 @@ internal class AtAGlanceWidgetRowLoader(
                         title = title,
                         subtitle = detail,
                         icon = AtAGlanceWidgetIcon.Vector(if (timer.isCountDown) MaterialSymbols.Timer else MaterialSymbols.AvTimer),
-                        titleStyle = if (paused != null) AtAGlanceWidgetTitleStyle.LARGE else AtAGlanceWidgetTitleStyle.BODY,
+                        titleStyle = AtAGlanceWidgetTitleStyle.LARGE,
                         titleMaxLines = 1,
                         trailing =
                             timer.actions.mapIndexed { index, action ->
@@ -344,17 +378,22 @@ internal class AtAGlanceWidgetRowLoader(
         )
     }
 
-    /** Reminders due within 30 minutes or overdue. */
+    /** Reminders shown on home's At a Glance card; see [ReminderRepository.getHomeCardReminders]. */
     fun reminderRows(): List<AtAGlanceWidgetRow> {
         val repository = ReminderRepository(context)
-        val reminders = repository.getHomeCardReminders(nowMillis, items.isShown(GlanceItem.REMINDERS))
-        // Upcoming reminders join the card 30 minutes before they are due, and turn overdue at their due time.
+        val reminders =
+            repository.getHomeCardReminders(
+                nowMillis,
+                items.isShown(GlanceItem.REMINDERS),
+                items.isShown(GlanceItem.TOMORROW_REMINDERS),
+            )
+        // Upcoming reminders join the card ahead of time, and turn overdue at their due time.
         repository.getUpcomingReminders(limit = 5).forEach { reminder ->
-            changesAt(reminder.dueMillis - ReminderRepository.HOME_CARD_LEAD_MILLIS)
+            changesAt(ReminderRepository.glanceVisibleFromMillis(reminder))
             changesAt(reminder.dueMillis)
         }
-        return reminders.map { reminder ->
-            AtAGlanceWidgetRow(
+        val reminderRows = reminders.map { reminder ->
+            reminder.dueMillis to AtAGlanceWidgetRow(
                 key = "reminder-${reminder.reminderId}",
                 icon = AtAGlanceWidgetIcon.Drawable(R.drawable.ic_reminder),
                 title = reminder.title,
@@ -373,20 +412,25 @@ internal class AtAGlanceWidgetRowLoader(
                     ),
             )
         }
+        return (reminderRows + notedTaskRows()).sortedBy { it.first }.map { it.second }
     }
 
     /**
      * An upcoming reminder's time (home also says how soon it is due), then "Now" for a minute, then
      * "Overdue" with its time, or its date once a day late.
      */
-    private fun reminderSubtitle(reminder: ReminderInfo): String {
+    internal fun reminderSubtitle(reminder: ReminderInfo): String {
         val sinceDue = nowMillis - reminder.dueMillis
         val isNow = reminder.hasTime && sinceDue in 0 until REMINDER_NOW_WINDOW_MILLIS
         val isOverdue = reminder.isOverdue(nowMillis) && !isNow
         if (isNow) changesAt(reminder.dueMillis + REMINDER_NOW_WINDOW_MILLIS)
         if (isOverdue && reminder.hasTime) changesAt(reminder.dueMillis + DAY_MILLIS)
         val time = formatTime(reminder.dueMillis)
+        val isTomorrow = reminder.date == LocalDate.now().plusDays(1)
+        val tomorrowLabel = string(R.string.calendar_relative_tomorrow)
         return when {
+            isTomorrow && !reminder.hasTime -> tomorrowLabel
+            isTomorrow -> "$time • $tomorrowLabel"
             !reminder.hasTime -> reminderSchedule(reminder)
             sinceDue < DAY_MILLIS -> time
             else -> reminderSchedule(reminder)
@@ -397,7 +441,7 @@ internal class AtAGlanceWidgetRowLoader(
         }
     }
 
-    private fun reminderSchedule(reminder: ReminderInfo): String {
+    internal fun reminderSchedule(reminder: ReminderInfo): String {
         val isToday = reminder.date == LocalDate.now()
         val time = if (reminder.hasTime) formatTime(reminder.dueMillis) else null
         return when {
@@ -615,18 +659,8 @@ internal class AtAGlanceWidgetRowLoader(
         ) {
             return emptyList()
         }
-        val tomorrow = now.toLocalDate().plusDays(1)
-        val excluded = calendarPreferences.getExcludedEventIds()
-        val dismissed = glancePreferences.getDismissedTomorrowEvents(tomorrow.toString())
-        val startOfTomorrow = tomorrow.atStartOfDay().toEpochMillis()
-        val tomorrowNoon = tomorrow.atTime(TOMORROW_MORNING_END_HOUR, 0).toEpochMillis()
-        val events = repository.getEventsOn(tomorrow).filterNot { it.eventId in excluded }
-        val morningEvent =
-            events.firstOrNull { !it.allDay && it.startMillis >= startOfTomorrow }?.takeIf { it.startMillis < tomorrowNoon }
         val tomorrowLabel = string(R.string.calendar_relative_tomorrow)
-        return (events.filter { it.allDay } + listOfNotNull(morningEvent))
-            .filterNot { it.eventId in dismissed }
-            .distinctBy { it.eventId }
+        return loadTomorrowGlanceEvents(repository, calendarPreferences, nowMillis)
             .map { event ->
                 calendarEventRow(
                     prefix = "tomorrow-event",

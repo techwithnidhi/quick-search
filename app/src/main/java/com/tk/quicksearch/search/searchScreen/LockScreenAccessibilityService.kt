@@ -1,5 +1,6 @@
 package com.tk.quicksearch.search.searchScreen
 
+import com.tk.quicksearch.notchGesture.NotchGestureSupport
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Context
@@ -9,16 +10,24 @@ import android.view.accessibility.AccessibilityManager
 import android.view.accessibility.AccessibilityEvent
 import com.tk.quicksearch.edgeGesture.EdgeGestureOverlay
 import com.tk.quicksearch.floatingButton.FloatingButtonOverlay
+import com.tk.quicksearch.notchGesture.NotchGestureOverlay
+import com.tk.quicksearch.search.apps.speedBump.SpeedBumpLaunchWatcher
 
-/** Hosts the Home double-tap lock action, the system-wide edge swipe handle and the floating button. */
+/**
+ * Hosts the Home double-tap lock action, the system-wide edge swipe handle, the floating button and
+ * the notch tap target, and spots bumped apps opened outside Quick Search for SpeedBump.
+ */
 class LockScreenAccessibilityService : AccessibilityService() {
     private var edgeGestureOverlay: EdgeGestureOverlay? = null
     private var floatingButtonOverlay: FloatingButtonOverlay? = null
+    private var notchGestureOverlay: NotchGestureOverlay? = null
 
     override fun onServiceConnected() {
         instance = this
-        // Nothing reads window events; the XML's subscription only woke the app on every screen change.
-        runCatching { serviceInfo = serviceInfo?.apply { eventTypes = 0 } }
+        // Window events are only read by SpeedBump outside Quick Search, so subscribe only while it
+        // has work; otherwise the XML's subscription would wake the app on every screen change.
+        SpeedBumpLaunchWatcher.attach(this, ::updateWindowEventSubscription)
+        updateWindowEventSubscription(SpeedBumpLaunchWatcher.isActive)
         edgeGestureOverlay =
             EdgeGestureOverlay(this).also { overlay ->
                 overlay.setPreviewVisible(edgeGesturePreviewVisible)
@@ -30,23 +39,39 @@ class LockScreenAccessibilityService : AccessibilityService() {
                 overlay.setAppVisible(resumedAppSurfaceCount > 0)
                 overlay.attach()
             }
+        if (NotchGestureSupport.isSupported(this)) {
+            notchGestureOverlay = NotchGestureOverlay(this).also { overlay -> overlay.attach() }
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         edgeGestureOverlay?.refresh()
         floatingButtonOverlay?.refresh()
+        notchGestureOverlay?.refresh()
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            SpeedBumpLaunchWatcher.onWindowStateChanged(event)
+        }
+    }
+
+    private fun updateWindowEventSubscription(active: Boolean) {
+        val eventTypes = if (active) AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED else 0
+        runCatching { serviceInfo = serviceInfo?.apply { this.eventTypes = eventTypes } }
+    }
 
     override fun onInterrupt() = Unit
 
     override fun onDestroy() {
+        SpeedBumpLaunchWatcher.detach()
         edgeGestureOverlay?.detach()
         edgeGestureOverlay = null
         floatingButtonOverlay?.detach()
         floatingButtonOverlay = null
+        notchGestureOverlay?.detach()
+        notchGestureOverlay = null
         if (instance === this) instance = null
         super.onDestroy()
     }

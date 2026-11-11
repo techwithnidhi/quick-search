@@ -24,7 +24,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import com.tk.quicksearch.app.navigation.LocalPageSwipeController
+import com.tk.quicksearch.app.navigation.RootDestination
+import com.tk.quicksearch.app.navigation.detectPageSwipe
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -100,6 +102,7 @@ import com.tk.quicksearch.search.core.AppTheme
 import com.tk.quicksearch.search.core.BackgroundSource
 import com.tk.quicksearch.search.core.SearchUiState
 import com.tk.quicksearch.search.data.preferences.NotesPreferences
+import com.tk.quicksearch.search.searchScreen.LocalPageBackdropDrawnByHost
 import com.tk.quicksearch.search.searchScreen.searchRoute.SearchScreenWallpaperLogic
 import com.tk.quicksearch.settings.shared.SettingsScreenBackground
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
@@ -169,8 +172,14 @@ fun WidgetsPanelScreen(
     val appWidgetHost = remember(appContext) { WidgetPanelHost(appContext, QUICK_SEARCH_WIDGET_HOST_ID) }
     val preferences = remember(appContext) { WidgetsPanelPreferences(appContext) }
     val notesPreferences = remember(appContext) { NotesPreferences(appContext) }
-    // The panel's opaque background covers Home, so it draws the wallpaper image itself.
-    val wallpaperState = SearchScreenWallpaperLogic(state = uiState, allowUnblurredSystemBackdrop = false)
+    // When the navigation host draws the shared backdrop, the panel is transparent like Home and
+    // reads the same wallpaper state. Otherwise its opaque background draws the image itself.
+    val backdropDrawnByHost = LocalPageBackdropDrawnByHost.current
+    val wallpaperState =
+        SearchScreenWallpaperLogic(
+            state = uiState,
+            allowUnblurredSystemBackdrop = backdropDrawnByHost,
+        )
     val imageBackgroundIsDark =
         remember(wallpaperState.imageBitmap, wallpaperState.usesWallpaperBackground) {
             if (wallpaperState.usesWallpaperBackground && wallpaperState.imageBitmap != null) {
@@ -320,19 +329,15 @@ fun WidgetsPanelScreen(
         }
     }
 
+    val pageSwipeController = LocalPageSwipeController.current
+    val latestOnNavigateToSearch by rememberUpdatedState(onNavigateToSearch)
     val swipeBackModifier =
-        Modifier.pointerInput(onNavigateToSearch) {
-            var totalHorizontalDrag = 0f
-            detectHorizontalDragGestures(
-                onDragStart = { totalHorizontalDrag = 0f },
-                onHorizontalDrag = { _, dragAmount -> totalHorizontalDrag += dragAmount },
-                onDragEnd = {
-                    if (totalHorizontalDrag <= -WIDGET_PANEL_SWIPE_THRESHOLD_PX) {
-                        onNavigateToSearch()
-                    }
-                    totalHorizontalDrag = 0f
-                },
-                onDragCancel = { totalHorizontalDrag = 0f },
+        Modifier.pointerInput(pageSwipeController) {
+            detectPageSwipe(
+                controller = pageSwipeController,
+                thresholdPx = WIDGET_PANEL_SWIPE_THRESHOLD_PX,
+                targetFor = { direction -> RootDestination.Search.takeIf { direction < 0 } },
+                onSwipe = { direction -> if (direction < 0) latestOnNavigateToSearch() },
             )
         }
 
@@ -360,6 +365,7 @@ fun WidgetsPanelScreen(
             wallpaperBackgroundAlpha = uiState.wallpaperBackgroundAlpha,
             wallpaperBlurRadius = uiState.wallpaperBlurRadius,
             useSystemWallpaperBackdrop = wallpaperState.usesSystemWallpaperBackdrop,
+            drawBackground = !backdropDrawnByHost,
             modifier = modifier.fillMaxSize(),
         ) {
         Box(

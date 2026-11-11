@@ -15,6 +15,7 @@ import com.tk.quicksearch.search.searchScreen.CalendarSectionParams
 import com.tk.quicksearch.search.searchScreen.NotesSectionParams
 import com.tk.quicksearch.search.searchScreen.RemindersSectionParams
 import com.tk.quicksearch.search.models.ReminderInfo
+import com.tk.quicksearch.search.models.BookmarkInfo
 import com.tk.quicksearch.search.searchScreen.searchScreenLayout.SectionRenderingState
 import com.tk.quicksearch.search.searchScreen.SettingsSectionParams
 import com.tk.quicksearch.search.models.CalendarEventInfo
@@ -85,6 +86,31 @@ fun shouldShowRemindersSection(renderingState: SectionRenderingState): Boolean =
             renderingState.expandedSection == ExpandedSection.NONE ||
                 renderingState.expandedSection == ExpandedSection.REMINDERS
         )
+
+fun shouldShowBookmarksSection(renderingState: SectionRenderingState): Boolean =
+    renderingState.hasBookmarkResults &&
+        renderingState.shouldShowBookmarks &&
+        (
+            renderingState.expandedSection == ExpandedSection.NONE ||
+                renderingState.expandedSection == ExpandedSection.BOOKMARKS
+        )
+
+/** True when any result section would render for this state. */
+fun shouldShowAnySection(
+    renderingState: SectionRenderingState,
+    contactsParams: ContactsSectionParams,
+    filesParams: FilesSectionParams,
+    calendarParams: CalendarSectionParams,
+): Boolean =
+    shouldShowAppsSection(renderingState) ||
+        shouldShowAppShortcutsSection(renderingState) ||
+        shouldShowContactsSection(renderingState, contactsParams) ||
+        shouldShowFilesSection(renderingState, filesParams) ||
+        shouldShowSettingsSection(renderingState) ||
+        shouldShowCalendarSection(renderingState, calendarParams) ||
+        shouldShowRemindersSection(renderingState) ||
+        shouldShowNotesSection(renderingState) ||
+        shouldShowBookmarksSection(renderingState)
 
 fun shouldShowNotesSection(renderingState: SectionRenderingState): Boolean =
     renderingState.hasNoteResults &&
@@ -461,7 +487,23 @@ fun rememberSectionRenderContext(
             }
     }
 
+    val isBookmarksExpanded = renderingState.expandedSection == ExpandedSection.BOOKMARKS
+    val shouldRenderBookmarks =
+        isSearching &&
+            state.bookmarksSectionState is BookmarksSectionVisibility.ShowingResults &&
+            (renderingState.expandedSection == ExpandedSection.NONE || isBookmarksExpanded)
     return SectionRenderContext(
+        // Feeds Top matches only; Noted has no results card of its own.
+        notedList =
+            if (isSearching && state.notedSectionState is NotedSectionVisibility.ShowingResults) {
+                renderingState.notedResults
+            } else {
+                emptyList()
+            },
+        shouldRenderBookmarks = shouldRenderBookmarks,
+        isBookmarksExpanded = isBookmarksExpanded,
+        bookmarksList = if (isSearching) renderingState.bookmarkResults else emptyList(),
+        showBookmarksExpandControls = isSearching,
         shouldRenderFiles = shouldRenderFiles,
         shouldRenderContacts = shouldRenderContacts,
         shouldRenderApps = shouldRenderApps,
@@ -595,7 +637,21 @@ fun rememberSectionRenderContext(
         recentResultRecencyIndex = state.recentResultRecencyIndex,
         isSectionAliasMode = state.detectedAliasSearchSection != null,
         isHomeScreenCalendarMode = !isSearching && state.detectedAliasSearchSection != SearchSection.CALENDAR,
-    )
+    ).let { context ->
+        // An expanded Bookmarks card takes the whole results area, like the other expanded sections.
+        if (!isBookmarksExpanded) {
+            context
+        } else {
+            SectionRenderContext(
+                shouldRenderBookmarks = context.shouldRenderBookmarks,
+                isBookmarksExpanded = true,
+                bookmarksList = context.bookmarksList,
+                showBookmarksExpandControls = context.showBookmarksExpandControls,
+                recentResultRecencyIndex = context.recentResultRecencyIndex,
+                isSectionAliasMode = context.isSectionAliasMode,
+            )
+        }
+    }
 }
 
 /** Parameters for rendering a single section. */
@@ -610,6 +666,10 @@ data class SectionRenderParams(
     val appShortcutsParams: AppShortcutsSectionParams? = null,
     val appsParams: AppsSectionParams? = null,
     val isReversed: Boolean,
+    // Only needed where a top match is opened outside composition (keyboard submit); rows read
+    // LocalBookmarksSectionParams instead.
+    val bookmarksParams: com.tk.quicksearch.search.bookmarks.BookmarksSectionParams? = null,
+    val notedParams: com.tk.quicksearch.search.noted.NotedSectionParams? = null,
 )
 
 /** Context for rendering sections, containing all the state needed for rendering decisions. */
@@ -646,6 +706,11 @@ data class SectionRenderContext(
     val appShortcutsExpandClick: () -> Unit = {},
     val calendarExpandClick: () -> Unit = {},
     val notesExpandClick: () -> Unit = {},
+    val shouldRenderBookmarks: Boolean = false,
+    val isBookmarksExpanded: Boolean = false,
+    val bookmarksList: List<BookmarkInfo> = emptyList(),
+    val showBookmarksExpandControls: Boolean = false,
+    val notedList: List<com.tk.quicksearch.search.models.NotedItem> = emptyList(),
     val shouldRenderReminders: Boolean = false,
     val isRemindersExpanded: Boolean = false,
     val remindersList: List<ReminderInfo> = emptyList(),

@@ -214,7 +214,10 @@ private fun TopMatchesCard(
     var showPriorityDialog by rememberSaveable { mutableStateOf(false) }
     val priorityItems =
         remember(topMatchesSectionOrder) {
-            topMatchesSectionOrder.filter { section -> FeatureFlags.isSearchSectionEnabled(section) }
+            topMatchesSectionOrder.filter { section ->
+                FeatureFlags.isSearchSectionEnabled(section) &&
+                    section in com.tk.quicksearch.search.core.SearchSectionRegistry.settingsSections
+            }
         }
 
     SettingsCard(modifier = modifier.fillMaxWidth()) {
@@ -567,6 +570,7 @@ fun SearchResultsSettingsSection(
     onNavigateToCalendarEvents: () -> Unit,
     onNavigateToNotes: () -> Unit,
     onNavigateToReminders: () -> Unit = {},
+    onNavigateToBookmarks: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalView.current.context
@@ -605,7 +609,10 @@ fun SearchResultsSettingsSection(
     val sectionOrder =
         ItemPriorityConfig
             .getSearchResultsPriority()
-            .filter { section -> FeatureFlags.isSearchSectionEnabled(section) }
+            .filter { section ->
+                FeatureFlags.isSearchSectionEnabled(section) &&
+                    section in com.tk.quicksearch.search.core.SearchSectionRegistry.settingsSections
+            }
     val allSectionsDisabled = sectionOrder.isNotEmpty() && sectionOrder.all { it in state.disabledSections }
 
     Column(modifier = modifier) {
@@ -660,6 +667,8 @@ fun SearchResultsSettingsSection(
             onNotesClickNoRipple = true,
             remindersSubtitle = stringResource(R.string.settings_reminders_view_all_desc),
             onRemindersClick = onNavigateToReminders,
+            bookmarksSubtitle = stringResource(R.string.settings_bookmarks_view_all_desc),
+            onBookmarksClick = onNavigateToBookmarks,
             sectionsWithHiddenAlias = buildSet {
                 if (!hasContactPermission) add(SearchSection.CONTACTS)
                 if (!hasFilePermission) add(SearchSection.FILES)

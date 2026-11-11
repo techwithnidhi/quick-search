@@ -99,6 +99,18 @@ fun hasAnySearchResults(state: SearchUiState): Boolean {
             section = SearchSection.REMINDERS,
             hasResults = state.reminderResults.isNotEmpty(),
         )
+    val hasBookmarkResults =
+        hasVisibleResultsForSection(
+            state = state,
+            section = SearchSection.BOOKMARKS,
+            hasResults = state.bookmarkResults.isNotEmpty(),
+        )
+    val hasNotedResults =
+        hasVisibleResultsForSection(
+            state = state,
+            section = SearchSection.NOTED,
+            hasResults = state.notedResults.isNotEmpty(),
+        )
     val hasNoteResults =
         FeatureFlags.isSearchSectionEnabled(SearchSection.NOTES) &&
             hasVisibleResultsForSection(
@@ -116,6 +128,8 @@ fun hasAnySearchResults(state: SearchUiState): Boolean {
             hasAppShortcutResults ||
             hasCalendarResults ||
             hasReminderResults ||
+            hasBookmarkResults ||
+            hasNotedResults ||
             hasNoteResults
 
     return hasResults

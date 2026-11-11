@@ -21,6 +21,7 @@ enum class ExpandedSection {
     APP_SETTINGS,
     CALENDAR,
     REMINDERS,
+    BOOKMARKS,
     NOTES,
 }
 
@@ -60,6 +61,8 @@ internal data class DerivedState(
     val hasCalendarResults: Boolean,
     val hasNoteResults: Boolean,
     val hasReminderResults: Boolean,
+    val hasBookmarkResults: Boolean,
+    val hasNotedResults: Boolean,
     val pinnedContactIds: Set<Long>,
     val pinnedFileUris: Set<String>,
     val hasMultipleExpandableSections: Boolean,
@@ -71,6 +74,7 @@ internal data class DerivedState(
     val shouldShowCalendar: Boolean,
     val shouldShowNotes: Boolean,
     val shouldShowReminders: Boolean,
+    val shouldShowBookmarks: Boolean,
     val shouldShowAppShortcuts: Boolean,
 )
 
@@ -143,6 +147,8 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
         (!isSearching && state.todayCalendarEvents.isNotEmpty())
     val hasNoteResults = notesEnabled && state.noteResults.isNotEmpty()
     val hasReminderResults = state.reminderResults.isNotEmpty()
+    val hasBookmarkResults = state.bookmarkResults.isNotEmpty()
+    val hasNotedResults = state.notedResults.isNotEmpty()
     val pinnedContactIds =
         remember(state.pinnedContacts) { state.pinnedContacts.map { it.contactId }.toSet() }
     val pinnedFileUris =
@@ -160,6 +166,8 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
             hasSettingResults || hasAppSettingResults,
             hasCalendarResults,
             hasReminderResults,
+            hasBookmarkResults,
+            hasNotedResults,
             hasNoteResults,
             hasAppShortcutResults,
         )
@@ -240,6 +248,13 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
                 state.detectedAliasSearchSection == SearchSection.REMINDERS
         ) &&
             (hasReminderResults || hasPinnedReminders)
+    val shouldShowBookmarks =
+        isSearching &&
+            (
+                SearchSection.BOOKMARKS !in state.disabledSections ||
+                    state.detectedAliasSearchSection == SearchSection.BOOKMARKS
+            ) &&
+            hasBookmarkResults
 
     return DerivedState(
         isSearching = isSearching,
@@ -268,6 +283,8 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
         hasCalendarResults = hasCalendarResults,
         hasNoteResults = hasNoteResults,
         hasReminderResults = hasReminderResults,
+        hasBookmarkResults = hasBookmarkResults,
+        hasNotedResults = hasNotedResults,
         pinnedContactIds = pinnedContactIds,
         pinnedFileUris = pinnedFileUris,
         hasMultipleExpandableSections = hasMultipleExpandableSections,
@@ -279,6 +296,7 @@ internal fun rememberDerivedState(state: SearchUiState): DerivedState {
         shouldShowCalendar = shouldShowCalendar,
         shouldShowNotes = shouldShowNotes,
         shouldShowReminders = shouldShowReminders,
+        shouldShowBookmarks = shouldShowBookmarks,
         shouldShowAppShortcuts = shouldShowAppShortcuts,
     )
 }

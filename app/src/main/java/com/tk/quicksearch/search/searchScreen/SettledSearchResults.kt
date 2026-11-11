@@ -14,6 +14,7 @@ import com.tk.quicksearch.search.deviceSettings.DeviceSetting
 import com.tk.quicksearch.search.models.AppInfo
 import com.tk.quicksearch.search.models.CalendarEventInfo
 import com.tk.quicksearch.search.models.ReminderInfo
+import com.tk.quicksearch.search.models.BookmarkInfo
 import com.tk.quicksearch.search.models.ContactInfo
 import com.tk.quicksearch.search.models.DeviceFile
 import com.tk.quicksearch.search.models.NoteInfo
@@ -130,7 +131,9 @@ internal fun TopMatchItem.stableKey(): String =
         is TopMatchItem.AppSetting -> "app-setting:${setting.id}"
         is TopMatchItem.Calendar -> "calendar:${event.eventId}"
         is TopMatchItem.Reminder -> "reminder:${reminder.reminderId}"
+        is TopMatchItem.Bookmark -> "bookmark:${bookmark.bookmarkId}"
         is TopMatchItem.Note -> "note:${note.noteId}"
+        is TopMatchItem.Noted -> "noted:${item.key}"
         is TopMatchItem.Other -> "other:$itemId"
     }
 
@@ -143,6 +146,8 @@ private data class RegularSearchResultsSnapshot(
     val appSettings: List<AppSettingResult> = emptyList(),
     val calendarEvents: List<CalendarEventInfo> = emptyList(),
     val reminders: List<ReminderInfo> = emptyList(),
+    val bookmarks: List<BookmarkInfo> = emptyList(),
+    val noted: List<com.tk.quicksearch.search.models.NotedItem> = emptyList(),
     val notes: List<NoteInfo> = emptyList(),
 )
 
@@ -207,6 +212,20 @@ internal fun rememberSettledRegularSearchRenderingState(
                         currentState.reminderResults,
                         SearchSection.REMINDERS in secondarySectionsRefreshing,
                     ),
+            bookmarks =
+                remember { SettledSearchResultsBuffer(emptyList<BookmarkInfo>()) }
+                    .displayedValue(
+                        query,
+                        currentState.bookmarkResults,
+                        SearchSection.BOOKMARKS in secondarySectionsRefreshing,
+                    ),
+            noted =
+                remember { SettledSearchResultsBuffer(emptyList<com.tk.quicksearch.search.models.NotedItem>()) }
+                    .displayedValue(
+                        query,
+                        currentState.notedResults,
+                        SearchSection.NOTED in secondarySectionsRefreshing,
+                    ),
             notes =
                 remember { SettledSearchResultsBuffer(emptyList<NoteInfo>()) }
                     .displayedValue(
@@ -227,6 +246,8 @@ internal fun rememberSettledRegularSearchRenderingState(
         hasAppSettingResults = displayedSnapshot.appSettings.isNotEmpty(),
         hasCalendarResults = displayedSnapshot.calendarEvents.isNotEmpty(),
         hasReminderResults = displayedSnapshot.reminders.isNotEmpty(),
+        hasBookmarkResults = displayedSnapshot.bookmarks.isNotEmpty(),
+        hasNotedResults = displayedSnapshot.noted.isNotEmpty(),
         hasNoteResults = displayedSnapshot.notes.isNotEmpty(),
         displayApps = displayedSnapshot.apps,
         appShortcutResults = displayedSnapshot.appShortcuts,
@@ -236,6 +257,8 @@ internal fun rememberSettledRegularSearchRenderingState(
         appSettingResults = displayedSnapshot.appSettings,
         calendarEvents = displayedSnapshot.calendarEvents,
         reminderResults = displayedSnapshot.reminders,
+        bookmarkResults = displayedSnapshot.bookmarks,
+        notedResults = displayedSnapshot.noted,
         noteResults = displayedSnapshot.notes,
     )
 }

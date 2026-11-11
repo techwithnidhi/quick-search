@@ -33,6 +33,7 @@ internal fun SearchScreenBottomChrome(
     detectedTimerSeconds: Int?,
     detectedReminderSchedule: ReminderNaturalLanguageParser.Schedule?,
     onKeyboardSwitchToggle: () -> Unit,
+    onQuickActionCompleted: () -> Unit,
     isSearchHistoryExpanded: Boolean,
     overlayCardColor: androidx.compose.ui.graphics.Color?,
     overlayDividerTint: androidx.compose.ui.graphics.Color?,
@@ -68,6 +69,8 @@ internal fun SearchScreenBottomChrome(
     onVoiceClick: () -> Unit,
     onOpenKeyboardActionClicked: () -> Unit,
 ) {
+    // Surfaces pinned here float over the results, which scroll beneath them and show through blurred.
+    CompositionLocalProvider(LocalInsetCardBackdropTargetsEnabled provides true) {
         if (expandedSection == ExpandedSection.NONE) {
             SearchQuickActionPills(
                 query = state.query,
@@ -77,6 +80,7 @@ internal fun SearchScreenBottomChrome(
                 detectedTimerSeconds = detectedTimerSeconds,
                 detectedReminderSchedule = detectedReminderSchedule,
                 onKeyboardSwitchToggle = onKeyboardSwitchToggle,
+                onQuickActionCompleted = onQuickActionCompleted,
             )
             if (!isSearchHistoryExpanded) {
                 CompositionLocalProvider(
@@ -239,4 +243,5 @@ internal fun SearchScreenBottomChrome(
                 )
             }
         }
+    }
 }

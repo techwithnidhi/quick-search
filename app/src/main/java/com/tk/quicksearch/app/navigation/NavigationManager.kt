@@ -18,17 +18,20 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.io.File
@@ -44,6 +47,8 @@ import com.tk.quicksearch.search.core.SearchSection
 import com.tk.quicksearch.search.core.SearchViewModel
 import com.tk.quicksearch.shared.ui.theme.QuickSearchTheme
 import com.tk.quicksearch.search.data.userAppPreferences.UserAppPreferences
+import com.tk.quicksearch.search.searchScreen.LocalPageBackdropDrawnByHost
+import com.tk.quicksearch.search.searchScreen.SharedPageBackdrop
 import com.tk.quicksearch.search.searchScreen.searchRoute.SearchRoute
 import com.tk.quicksearch.settings.settingsDetailScreen.level
 import com.tk.quicksearch.settings.settingsDetailScreen.resolveBackDestination
@@ -62,35 +67,7 @@ enum class RootDestination {
     Settings,
 }
 
-private const val NAVIGATION_ANIMATION_DURATION_MS = 180
-
-private enum class SwipeAnimationDirection {
-    LEFT,
-    RIGHT,
-}
-
-private fun directionalNavigationTransition(
-    direction: SwipeAnimationDirection,
-) = when (direction) {
-    SwipeAnimationDirection.LEFT ->
-        slideInHorizontally(
-            animationSpec = androidx.compose.animation.core.tween(NAVIGATION_ANIMATION_DURATION_MS),
-            initialOffsetX = { it },
-        ) togetherWith
-            slideOutHorizontally(
-                animationSpec = androidx.compose.animation.core.tween(NAVIGATION_ANIMATION_DURATION_MS),
-                targetOffsetX = { -it },
-            )
-    SwipeAnimationDirection.RIGHT ->
-        slideInHorizontally(
-            animationSpec = androidx.compose.animation.core.tween(NAVIGATION_ANIMATION_DURATION_MS),
-            initialOffsetX = { -it },
-        ) togetherWith
-            slideOutHorizontally(
-                animationSpec = androidx.compose.animation.core.tween(NAVIGATION_ANIMATION_DURATION_MS),
-                targetOffsetX = { it },
-            )
-}
+internal const val NAVIGATION_ANIMATION_DURATION_MS = 180
 
 data class NavigationRequest(
     val destination: RootDestination,
@@ -170,17 +147,11 @@ fun MainContent(
             Modifier
                 .fillMaxSize()
                 .background(
-                    if (
-                        allowSystemWallpaperBackdrop &&
-                        currentScreen == AppScreen.Main &&
-                        destination == RootDestination.Search
-                    ) {
-                        Color.Transparent
-                    } else if (allowSystemWallpaperBackdrop) {
-                        MaterialTheme.colorScheme.background
-                    } else {
-                        Color.Transparent
-                    },
+                    animatedRootBackgroundColor(
+                        allowSystemWallpaperBackdrop = allowSystemWallpaperBackdrop,
+                        // NavigationContent covers Settings itself, in step with the page slide.
+                        showsSystemWallpaper = currentScreen == AppScreen.Main,
+                    ),
                 ),
     ) {
     AnimatedContent(
@@ -471,10 +442,6 @@ private fun NavigationContent(
     var settingsDetailAnimationDirectionOverride by
         remember { mutableStateOf<SwipeAnimationDirection?>(null) }
 
-    LaunchedEffect(destination) {
-        rootAnimationDirectionOverride = null
-    }
-
     InAppReviewOnReturnEffect(
         destination = destination,
         activity = activity,
@@ -490,180 +457,202 @@ private fun NavigationContent(
         settingsDetailAnimationDirectionOverride = null
     }
 
-    AnimatedContent(
-        targetState = destination,
-        transitionSpec = {
-            val isForward =
-                when {
-                    initialState == RootDestination.WidgetsPanel &&
-                        targetState == RootDestination.Search -> true
-                    initialState == RootDestination.Search &&
-                        targetState == RootDestination.Settings -> true
-                    else -> false
-                }
-            val animationDirection =
-                rootAnimationDirectionOverride
-                    ?: if (isForward) {
-                        SwipeAnimationDirection.LEFT
-                    } else {
-                        SwipeAnimationDirection.RIGHT
-                    }
-            directionalNavigationTransition(animationDirection)
-        },
-        label = "NavigationTransition",
-    ) { targetDestination ->
-        when (targetDestination) {
-            RootDestination.WidgetsPanel -> {
-                val navigateToSearch: () -> Unit = {
-                    rootAnimationDirectionOverride = SwipeAnimationDirection.LEFT
-                    if (returnToOverlay) {
-                        onFinishActivity()
-                    } else {
-                        onDestinationChange(RootDestination.Search)
-                    }
-                }
-                BackHandler(onBack = navigateToSearch)
-                WidgetsPanelScreen(
-                    onNavigateToSearch = navigateToSearch,
-                    uiState = uiState,
-                )
-            }
-
-            RootDestination.Settings -> {
-                SettingsNavigationContent(
-                    settingsDetailType = settingsDetailType,
-                    previousSettingsDetailType = previousSettingsDetailType,
-                    settingsDetailAnimationDirectionOverride = settingsDetailAnimationDirectionOverride,
-                    onSettingsDetailTypeChange = onSettingsDetailTypeChange,
-                    onSettingsDetailAnimationDirectionConsumed = {
-                        settingsDetailAnimationDirectionOverride = null
+    // Home and the widgets panel share one wallpaper drawn behind the page switch, so only their
+    // content slides. Settings covers it with an opaque background. Everything is driven by the
+    // page controller's progress in the draw phase, so the backdrop and pages never drift apart.
+    val pageSwipeController =
+        rememberPageSwipeController(destination, settingsDetailType, onSettingsDetailTypeChange, viewModel)
+    LaunchedEffect(destination) {
+        pageSwipeController.navigateTo(
+            destination,
+            directionOverride =
+                when (rootAnimationDirectionOverride) {
+                    SwipeAnimationDirection.LEFT -> 1
+                    SwipeAnimationDirection.RIGHT -> -1
+                    null -> null
+                },
+        )
+        rootAnimationDirectionOverride = null
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Opaque cover under Settings; a transparent (system wallpaper) window would smear trails.
+        val backgroundColor = MaterialTheme.colorScheme.background
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        val alpha = pageSwipeController.visibilityOf(RootDestination.Settings)
+                        if (alpha > 0f) drawRect(backgroundColor, alpha = alpha)
                     },
-                    onRootAnimationDirectionChange = { rootAnimationDirectionOverride = it },
-                    onDestinationChange = onDestinationChange,
-                    pendingSettingsImportUri = pendingSettingsImportUri,
-                    onPendingSettingsImportUriConsumed = onPendingSettingsImportUriConsumed,
-                    viewModel = viewModel,
-                    returnToOverlay = returnToOverlay,
-                    onFinishActivity = onFinishActivity,
-                )
-            }
-
-            RootDestination.Search -> {
-                BackHandler { onSearchBackPressed() }
-                val keyboardController =
-                    androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-                val lastOpenedSettingsDetail = SettingsNavigationMemory.getLastOpenedSettingsDetail()
-                // The search field is disposed while another page is on screen, so an open keyboard
-                // is recorded here and restored when search comes back.
-                val density = androidx.compose.ui.platform.LocalDensity.current
-                // Derived so the keyboard animation does not recompose this destination per frame.
-                val imeInsets = WindowInsets.ime
-                val isImeVisible by remember(imeInsets, density) {
-                    derivedStateOf { imeInsets.getBottom(density) > 0 }
-                }
-                val leaveSearchSurface: () -> Unit = {
-                    viewModel.setSearchKeyboardRestoreRequest(isImeVisible)
-                    keyboardController?.hide()
-                }
-                val navigateToSettings: (SettingsDetailType?) -> Unit = { detailType ->
-                    onDestinationChange(RootDestination.Settings)
-                    onSettingsDetailTypeChange(detailType)
-                    leaveSearchSurface()
-                }
-                val navigateToWidgetsPanelFromSwipeRight: () -> Unit = {
-                    rootAnimationDirectionOverride = SwipeAnimationDirection.RIGHT
-                    onDestinationChange(RootDestination.WidgetsPanel)
-                    leaveSearchSurface()
-                }
-                SearchRoute(
-                    viewModel = viewModel,
-                    onCloseAppRequest = onFinishActivity,
-                    onSettingsClick = {
-                        navigateToSettings(settingsDetailType ?: lastOpenedSettingsDetail)
-                    },
-                    onOpenAppSettingDestination = { destination ->
-                        handleAppSettingsDestination(
-                            destination = destination,
-                            handlers =
-                                AppSettingsDestinationHandlers(
-                                    onOpenSettingsDetail = { detailType ->
-                                        navigateToSettings(detailType)
-                                    },
-                                    onReloadApps = { viewModel.refreshApps(showToast = true) },
-                                    onReloadContacts = { viewModel.refreshContacts(showToast = true) },
-                                    onReloadFiles = { viewModel.refreshFiles(showToast = true) },
-                                    onSendFeedback = {
-                                        FeedbackUtils.launchFeedbackEmail(
-                                            context = context,
-                                            feedbackText = null,
-                                        )
-                                    },
-                                    onRateQuickSearch = { launchRateQuickSearch(context) },
-                                    onOpenDevelopmentPage = { launchDevelopmentPage(context) },
-                                    onSetDefaultAssistant = {
-                                        openDefaultAssistantSettings(context)
-                                    },
-                                    onSetDefaultLauncher = {
-                                        openDefaultLauncherSettings(context)
-                                    },
-                                    onAddHomeScreenWidget = {
-                                        com.tk.quicksearch.widgets.utils.requestAddQuickSearchWidget(context)
-                                    },
-                                    onAddQuickSettingsTile = {
-                                        com.tk.quicksearch.tile.requestAddQuickSearchTile(context)
-                                    },
-                                ),
-                        )
-                    },
-                    onOpenNotesDetail = {
-                        val destination =
-                            if (it != null) {
-                                SettingsDetailType.NOTE_EDITOR
+        )
+        // Kept composed across Settings so returning never rebuilds (and re-fades) the wallpaper.
+        SharedPageBackdrop(
+            state = uiState,
+            modifier =
+                Modifier.graphicsLayer {
+                    alpha = 1f - pageSwipeController.visibilityOf(RootDestination.Settings)
+                },
+        )
+        CompositionLocalProvider(
+            LocalPageBackdropDrawnByHost provides true,
+            LocalPageSwipeController provides if (returnToOverlay) null else pageSwipeController,
+        ) {
+            PageSwipeHost(controller = pageSwipeController) { targetDestination ->
+                when (targetDestination) {
+                    RootDestination.WidgetsPanel -> {
+                        val navigateToSearch: () -> Unit = {
+                            rootAnimationDirectionOverride = SwipeAnimationDirection.LEFT
+                            if (returnToOverlay) {
+                                onFinishActivity()
                             } else {
-                                SettingsDetailType.NOTES
+                                onDestinationChange(RootDestination.Search)
                             }
-                        if (destination == SettingsDetailType.NOTE_EDITOR) {
-                            onDestinationChange(RootDestination.Settings)
-                            onSettingsDetailTypeChangeFromSearch(destination)
-                            keyboardController?.hide()
-                        } else {
-                            navigateToSettings(destination)
                         }
-                    },
-                    onOpenNotificationHistory = {
-                        navigateToSettings(SettingsDetailType.NOTIFICATION_HISTORY)
-                    },
-                    onOpenWidgetsPanelFromSwipe = navigateToWidgetsPanelFromSwipeRight,
-                    onSearchEngineLongPress = {
-                        navigateToSettings(SettingsDetailType.SEARCH_ENGINES)
-                    },
-                    onCustomizeSearchEnginesClick = {
-                        navigateToSettings(SettingsDetailType.SEARCH_ENGINES)
-                    },
-                    onOpenAiSearchConfigure = {
-                        navigateToSettings(
-                            if (viewModel.uiState.value.hasApiKey) {
-                                SettingsDetailType.GEMINI_API_CONFIG
-                            } else {
-                                SettingsDetailType.API_KEY_SETUP
-                            },
+                        BackHandler(onBack = navigateToSearch)
+                        WidgetsPanelScreen(
+                            onNavigateToSearch = navigateToSearch,
+                            uiState = uiState,
                         )
-                    },
-                    onOpenToolsSettings = {
-                        navigateToSettings(SettingsDetailType.TOOLS)
-                    },
-                    onOpenCustomToolSettings = { toolId ->
-                        CustomToolNavigationMemory.setPendingToolId(toolId)
-                        navigateToSettings(SettingsDetailType.CUSTOM_TOOL_EDITOR)
-                    },
-                    onOpenReleaseNotesFeatures = {
-                        navigateToSettings(SettingsDetailType.FEATURES_LIST)
-                    },
-                    onWelcomeAnimationCompleted = {
-                        viewModel.onSearchBarWelcomeAnimationCompleted()
-                    },
-                    onWallpaperLoaded = { viewModel.setWallpaperAvailable(true) },
-                )
+                    }
+
+                    RootDestination.Settings -> {
+                        SettingsNavigationContent(
+                            settingsDetailType = settingsDetailType,
+                            previousSettingsDetailType = previousSettingsDetailType,
+                            settingsDetailAnimationDirectionOverride = settingsDetailAnimationDirectionOverride,
+                            onSettingsDetailTypeChange = onSettingsDetailTypeChange,
+                            onSettingsDetailAnimationDirectionConsumed = {
+                                settingsDetailAnimationDirectionOverride = null
+                            },
+                            onRootAnimationDirectionChange = { rootAnimationDirectionOverride = it },
+                            onDestinationChange = onDestinationChange,
+                            pendingSettingsImportUri = pendingSettingsImportUri,
+                            onPendingSettingsImportUriConsumed = onPendingSettingsImportUriConsumed,
+                            viewModel = viewModel,
+                            returnToOverlay = returnToOverlay,
+                            onFinishActivity = onFinishActivity,
+                        )
+                    }
+
+                    RootDestination.Search -> {
+                        BackHandler { onSearchBackPressed() }
+                        val keyboardController =
+                            androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+                        val lastOpenedSettingsDetail = SettingsNavigationMemory.getLastOpenedSettingsDetail()
+                        // The search field is disposed while another page is on screen, so an open keyboard
+                        // is recorded here and restored when search comes back.
+                        val density = androidx.compose.ui.platform.LocalDensity.current
+                        // Derived so the keyboard animation does not recompose this destination per frame.
+                        val imeInsets = WindowInsets.ime
+                        val isImeVisible by remember(imeInsets, density) {
+                            derivedStateOf { imeInsets.getBottom(density) > 0 }
+                        }
+                        val leaveSearchSurface: () -> Unit = {
+                            viewModel.setSearchKeyboardRestoreRequest(isImeVisible)
+                            keyboardController?.hide()
+                        }
+                        val navigateToSettings: (SettingsDetailType?) -> Unit = { detailType ->
+                            onDestinationChange(RootDestination.Settings)
+                            onSettingsDetailTypeChange(detailType)
+                            leaveSearchSurface()
+                        }
+                        val navigateToWidgetsPanelFromSwipeRight: () -> Unit = {
+                            rootAnimationDirectionOverride = SwipeAnimationDirection.RIGHT
+                            onDestinationChange(RootDestination.WidgetsPanel)
+                            leaveSearchSurface()
+                        }
+                        SearchRoute(
+                            viewModel = viewModel,
+                            onCloseAppRequest = onFinishActivity,
+                            onSettingsClick = {
+                                navigateToSettings(settingsDetailType ?: lastOpenedSettingsDetail)
+                            },
+                            onOpenAppSettingDestination = { destination ->
+                                handleAppSettingsDestination(
+                                    destination = destination,
+                                    handlers =
+                                        AppSettingsDestinationHandlers(
+                                            onOpenSettingsDetail = { detailType ->
+                                                navigateToSettings(detailType)
+                                            },
+                                            onReloadApps = { viewModel.refreshApps(showToast = true) },
+                                            onReloadContacts = { viewModel.refreshContacts(showToast = true) },
+                                            onReloadFiles = { viewModel.refreshFiles(showToast = true) },
+                                            onSendFeedback = {
+                                                FeedbackUtils.launchFeedbackEmail(
+                                                    context = context,
+                                                    feedbackText = null,
+                                                )
+                                            },
+                                            onRateQuickSearch = { launchRateQuickSearch(context) },
+                                            onOpenDevelopmentPage = { launchDevelopmentPage(context) },
+                                            onSetDefaultAssistant = {
+                                                openDefaultAssistantSettings(context)
+                                            },
+                                            onSetDefaultLauncher = {
+                                                openDefaultLauncherSettings(context)
+                                            },
+                                            onAddHomeScreenWidget = {
+                                                com.tk.quicksearch.widgets.utils.requestAddQuickSearchWidget(context)
+                                            },
+                                            onAddQuickSettingsTile = {
+                                                com.tk.quicksearch.tile.requestAddQuickSearchTile(context)
+                                            },
+                                        ),
+                                )
+                            },
+                            onOpenNotesDetail = {
+                                val destination =
+                                    if (it != null) {
+                                        SettingsDetailType.NOTE_EDITOR
+                                    } else {
+                                        SettingsDetailType.NOTES
+                                    }
+                                if (destination == SettingsDetailType.NOTE_EDITOR) {
+                                    onDestinationChange(RootDestination.Settings)
+                                    onSettingsDetailTypeChangeFromSearch(destination)
+                                    keyboardController?.hide()
+                                } else {
+                                    navigateToSettings(destination)
+                                }
+                            },
+                            onOpenNotificationHistory = {
+                                navigateToSettings(SettingsDetailType.NOTIFICATION_HISTORY)
+                            },
+                            onOpenWidgetsPanelFromSwipe = navigateToWidgetsPanelFromSwipeRight,
+                            onSearchEngineLongPress = {
+                                navigateToSettings(SettingsDetailType.SEARCH_ENGINES)
+                            },
+                            onCustomizeSearchEnginesClick = {
+                                navigateToSettings(SettingsDetailType.SEARCH_ENGINES)
+                            },
+                            onOpenAiSearchConfigure = {
+                                navigateToSettings(
+                                    if (viewModel.uiState.value.hasApiKey) {
+                                        SettingsDetailType.GEMINI_API_CONFIG
+                                    } else {
+                                        SettingsDetailType.API_KEY_SETUP
+                                    },
+                                )
+                            },
+                            onOpenToolsSettings = {
+                                navigateToSettings(SettingsDetailType.TOOLS)
+                            },
+                            onOpenCustomToolSettings = { toolId ->
+                                CustomToolNavigationMemory.setPendingToolId(toolId)
+                                navigateToSettings(SettingsDetailType.CUSTOM_TOOL_EDITOR)
+                            },
+                            onOpenReleaseNotesFeatures = {
+                                navigateToSettings(SettingsDetailType.FEATURES_LIST)
+                            },
+                            onWelcomeAnimationCompleted = {
+                                viewModel.onSearchBarWelcomeAnimationCompleted()
+                            },
+                            onWallpaperLoaded = { viewModel.setWallpaperAvailable(true) },
+                        )
+                    }
+                }
             }
         }
     }

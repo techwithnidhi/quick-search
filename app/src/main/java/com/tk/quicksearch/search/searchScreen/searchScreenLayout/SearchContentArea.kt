@@ -1,5 +1,9 @@
 package com.tk.quicksearch.search.searchScreen.searchScreenLayout
 
+import com.tk.quicksearch.search.searchScreen.LocalInsetCardBackdrop
+import com.tk.quicksearch.search.searchScreen.contentBottomInset
+import com.tk.quicksearch.search.searchScreen.contentTopInset
+import com.tk.quicksearch.search.searchScreen.resultsClipShape
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
@@ -14,9 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,11 +51,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupProperties
 import com.tk.quicksearch.R
 import com.tk.quicksearch.search.core.*
 import com.tk.quicksearch.searchEngines.*
 import com.tk.quicksearch.search.core.isLikelyWebUrl
+import com.tk.quicksearch.search.bookmarks.LocalBookmarksSectionParams
 import com.tk.quicksearch.search.searchScreen.ExpandedSection
 import com.tk.quicksearch.search.searchScreen.ContactsSectionParams
 import com.tk.quicksearch.search.searchScreen.FilesSectionParams
@@ -74,8 +76,8 @@ import com.tk.quicksearch.search.searchScreen.components.CollapseButton
 import com.tk.quicksearch.search.searchHistory.RecentSearchEntry
 import com.tk.quicksearch.search.searchHistory.RecentSearchItem
 import com.tk.quicksearch.search.searchHistory.SearchHistoryTab
+import com.tk.quicksearch.shared.ui.components.AppDropdownMenu
 import com.tk.quicksearch.shared.ui.icons.MaterialSymbols
-import com.tk.quicksearch.shared.ui.theme.AppColors
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
 import kotlin.math.min
 import com.tk.quicksearch.search.other.OtherSearchItemActionHandler
@@ -160,14 +162,7 @@ fun SearchContentArea(
     val hasQuery = state.query.isNotBlank()
     val isUrlQuery = remember(state.query) { isLikelyWebUrl(state.query) }
     val hasAnySearchContent =
-        shouldShowAppsSection(renderingState) ||
-                shouldShowAppShortcutsSection(renderingState) ||
-                shouldShowContactsSection(renderingState, contactsParams) ||
-                shouldShowFilesSection(renderingState, filesParams) ||
-                shouldShowSettingsSection(renderingState) ||
-                shouldShowCalendarSection(renderingState, calendarParams) ||
-                shouldShowRemindersSection(renderingState) ||
-                shouldShowNotesSection(renderingState)
+        shouldShowAnySection(renderingState, contactsParams, filesParams, calendarParams)
     val alignResultsToBottom =
             useOneHandedMode &&
                     !showAiSearch &&
@@ -178,7 +173,6 @@ fun SearchContentArea(
                     && !showWeather
     val expandedSectionBottomInset = 80.dp
     val aliasExpandedSectionBottomInset = 12.dp
-    val footerBottomPadding = 28.dp
     // Result cards need breathing room so they do not touch the bar/engine strip.
     val resultCardBottomGap =
         if (alignResultsToBottom && hasQuery) DesignTokens.SpacingMedium - DesignTokens.SpacingXXSmall else 0.dp
@@ -334,6 +328,9 @@ fun SearchContentArea(
                         onTabSelected = { searchHistorySelectedTab = it },
                     ),
         ) {
+            val bottomOverlayInset = LocalInsetCardBackdrop.current?.contentBottomInset() ?: 0.dp
+            val topOverlayInset = LocalInsetCardBackdrop.current?.contentTopInset() ?: 0.dp
+            val footerBottomPadding = 28.dp + bottomOverlayInset
             // Expanding or collapsing a section or search history rebuilds the whole layout in
             // one frame (other sections drop out, bottom alignment and scroll direction flip), so
             // no per-card size animation can bridge it. Fade and lift the new layout in instead.
@@ -500,7 +497,7 @@ fun SearchContentArea(
                         Modifier
                             .edgeBleed(edgeBleed).fillMaxWidth()
                             .then(expansionTransitionModifier).then(heightModifier)
-                            .clip(TopRoundedShape)
+                            .clip(LocalInsetCardBackdrop.current.resultsClipShape(TopRoundedShape, edgeBleed))
                             .then(edgeFadeModifier)
                             .then(
                                 if (!hasQuery) {
@@ -522,7 +519,7 @@ fun SearchContentArea(
                             .then(
                                 if (shouldHideScrollView) {
                                     Modifier.padding(
-                                        bottom = DesignTokens.SpacingMedium,
+                                        top = topOverlayInset, bottom = DesignTokens.SpacingMedium + bottomOverlayInset,
                                     )
                                 } else {
                                     Modifier
@@ -530,7 +527,7 @@ fun SearchContentArea(
                                             scrollState,
                                             reverseScrolling =
                                             alignResultsToBottom,
-                                        ).padding(
+                                        ).padding(top = topOverlayInset, bottom = bottomOverlayInset).padding(
                                             bottom =
                                                 if (
                                                     renderingState.expandedSection != ExpandedSection.NONE ||
@@ -580,11 +577,11 @@ fun SearchContentArea(
                                     if (isOverlayPresentation) {
                                         0.dp
                                     } else {
-                                        this@BoxWithConstraints.maxHeight
+                                        this@BoxWithConstraints.maxHeight - bottomOverlayInset - topOverlayInset
                                     },
                                 expandedCardMaxHeight =
                                     (
-                                        this@BoxWithConstraints.maxHeight -
+                                        this@BoxWithConstraints.maxHeight - topOverlayInset - bottomOverlayInset -
                                             if (isSectionAliasMode) {
                                                 aliasExpandedSectionBottomInset
                                             } else {
@@ -636,13 +633,10 @@ fun SearchContentArea(
                         }
                     }
                 }
-                DropdownMenu(
+                AppDropdownMenu(
                     expanded = showBackgroundMenu,
                     onDismissRequest = { showBackgroundMenu = false },
                     offset = backgroundMenuDpOffset,
-                    shape = RoundedCornerShape(24.dp),
-                    containerColor = AppColors.DialogBackground,
-                    properties = PopupProperties(focusable = false),
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_change_wallpaper)) },
@@ -710,6 +704,7 @@ fun SearchContentArea(
             }
 
             if (renderingState.expandedSection != ExpandedSection.NONE && !isSectionAliasMode) {
+                val bookmarksParams = LocalBookmarksSectionParams.current
                 CollapseButton(
                     showWallpaperBackground = state.showWallpaperBackground,
                     onClick = {
@@ -746,7 +741,7 @@ fun SearchContentArea(
                                 remindersParams?.onExpandClick?.invoke()
                             }
 
-                            else -> {}
+                            ExpandedSection.BOOKMARKS -> bookmarksParams?.onExpandClick?.invoke()
                         }
                     },
                     modifier =
@@ -759,8 +754,7 @@ fun SearchContentArea(
             if (showRetryButton) {
                 RetryAiSearchButton(
                     onClick = {
-                        val retryQuery =
-                            aiSearchState?.activeQuery?.trim().orEmpty()
+                        val retryQuery = aiSearchState.activeQuery.trim()
                         if (retryQuery.isNotEmpty()) {
                             onSearchTargetClick(
                                 retryQuery,

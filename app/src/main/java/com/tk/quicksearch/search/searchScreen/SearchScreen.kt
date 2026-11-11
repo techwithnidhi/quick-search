@@ -25,7 +25,6 @@ import com.tk.quicksearch.R
 import com.tk.quicksearch.search.apps.GestureAllAppsDrawer
 import com.tk.quicksearch.shared.ui.theme.LocalImageBackgroundIsDark
 import com.tk.quicksearch.shared.ui.theme.LocalHomeTextColorOverride
-import com.tk.quicksearch.shared.ui.theme.AppColors
 import com.tk.quicksearch.search.contacts.models.ContactCardAction
 import com.tk.quicksearch.search.core.AppSuggestionTabType
 import com.tk.quicksearch.search.core.DirectDialOption
@@ -42,18 +41,14 @@ import com.tk.quicksearch.search.appSettings.AppSettingResult
 import com.tk.quicksearch.search.deviceSettings.DeviceSetting
 import com.tk.quicksearch.search.searchHistory.RecentSearchEntry
 import com.tk.quicksearch.search.data.appShortcutRepository.StaticShortcut
-import com.tk.quicksearch.search.core.AppTheme
 import com.tk.quicksearch.search.core.AppThemeMode
-import com.tk.quicksearch.search.core.BackgroundSource
 import com.tk.quicksearch.search.other.OtherSearchItemActionHandler
 import com.tk.quicksearch.search.searchScreen.searchRoute.SearchRoute
 import com.tk.quicksearch.search.searchScreen.searchRoute.SearchScreenStateManagement
 import com.tk.quicksearch.search.searchScreen.searchRoute.SearchScreenDialogLogic
-import com.tk.quicksearch.shared.ui.theme.ThemeModeFallbackBackgroundAlpha
 import com.tk.quicksearch.shared.util.ImageAppearanceUtils
 import com.tk.quicksearch.shared.util.setSystemBarsDark
 
-private const val STARTUP_BACKGROUND_TRANSITION_DURATION_MS = 90
 
 @Composable
 fun SearchScreen(
@@ -106,6 +101,8 @@ fun SearchScreen(
     onMovePinnedNote: (NoteInfo, Boolean) -> Unit = { _, _ -> },
     onDeleteNote: (NoteInfo) -> Unit,
     reminderActions: ReminderSectionActions = ReminderSectionActions(),
+    onBookmarkClick: (com.tk.quicksearch.search.models.BookmarkInfo) -> Unit = {},
+    onNotedItemClick: (com.tk.quicksearch.search.models.NotedItem) -> Unit = {},
     onPinFile: (DeviceFile) -> Unit,
     onUnpinFile: (DeviceFile) -> Unit,
     onMovePinnedFile: (DeviceFile, Boolean) -> Unit = { _, _ -> },
@@ -292,6 +289,8 @@ fun SearchScreen(
         onMovePinnedNote = onMovePinnedNote,
         onDeleteNote = onDeleteNote,
         reminderActions = reminderActions,
+        onBookmarkClick = onBookmarkClick,
+        onNotedItemClick = onNotedItemClick,
         onPinFile = onPinFile,
         onUnpinFile = onUnpinFile,
         onMovePinnedFile = onMovePinnedFile,
@@ -397,18 +396,6 @@ fun SearchScreen(
 
     val context = LocalContext.current
     val isSystemDarkTheme = isSystemInDarkTheme()
-    val effectiveBackgroundSource =
-        if (stateResult.useMonoThemeFallback) {
-            BackgroundSource.THEME
-        } else {
-            state.backgroundSource
-        }
-    val effectiveAppTheme =
-        if (stateResult.useMonoThemeFallback) {
-            AppTheme.MONOCHROME
-        } else {
-            state.appTheme
-        }
     if (!isOverlayPresentation) {
         val useDarkSystemBarsFromTheme =
             when (state.appThemeMode) {
@@ -435,48 +422,18 @@ fun SearchScreen(
         LocalHomeWidgetEditGuard provides homeWidgetEditGuard,
         LocalSearchCardLayoutEnabled provides state.cardLayoutEnabled,
         LocalCardlessTrailingEdge provides remember { CardlessTrailingEdge() },
+        com.tk.quicksearch.search.bookmarks.LocalBookmarksSectionParams provides stateResult.sectionParams.bookmarksParams,
+        com.tk.quicksearch.search.noted.LocalNotedSectionParams provides stateResult.sectionParams.notedParams,
     ) {
     Box(modifier = screenModifier.homeWidgetEditTapGuard(homeWidgetEditGuard)) {
-        if (!isOverlayPresentation) {
-            if (stateResult.useSystemWallpaperBackdrop) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(
-                                AppColors.WallpaperOverlayTint.copy(
-                                    alpha = state.wallpaperBackgroundAlpha.coerceIn(0f, 1f),
-                                ),
-                            ),
-                )
-            } else {
-                SearchScreenBackground(
-                    showWallpaperBackground = stateResult.useImageBackground,
-                    wallpaperBitmap = stateResult.imageBitmap,
-                    wallpaperBackgroundAlpha = state.wallpaperBackgroundAlpha,
-                    wallpaperBlurRadius = state.wallpaperBlurRadius,
-                    backgroundTransitionDurationMillis =
-                        if (state.isInitializing &&
-                            effectiveBackgroundSource != com.tk.quicksearch.search.core.BackgroundSource.THEME
-                        ) {
-                            STARTUP_BACKGROUND_TRANSITION_DURATION_MS
-                        } else {
-                            com.tk.quicksearch.shared.ui.theme.DesignTokens.WallpaperFadeInDuration + 120
-                        },
-                    fallbackBackgroundAlpha =
-                        if (!state.deviceThemeEnabled && effectiveBackgroundSource == com.tk.quicksearch.search.core.BackgroundSource.THEME) {
-                            ThemeModeFallbackBackgroundAlpha
-                        } else {
-                            1f
-                        },
-                    useGradientFallback =
-                        !state.deviceThemeEnabled &&
-                            (effectiveBackgroundSource == com.tk.quicksearch.search.core.BackgroundSource.THEME || stateResult.useMonoThemeFallback),
-                    appTheme = effectiveAppTheme,
-                    overlayThemeIntensity = state.overlayThemeIntensity,
-                    amoledThemeEnabled = state.amoledThemeEnabled,
-                )
-            }
+        if (!isOverlayPresentation && !LocalPageBackdropDrawnByHost.current) {
+            SearchPageBackdrop(
+                state = state,
+                imageBitmap = stateResult.imageBitmap,
+                useImageBackground = stateResult.useImageBackground,
+                useSystemWallpaperBackdrop = stateResult.useSystemWallpaperBackdrop,
+                useMonoThemeFallback = stateResult.useMonoThemeFallback,
+            )
         }
 
         // Main content
@@ -562,7 +519,7 @@ fun SearchScreen(
             onClearDetectedShortcut = onClearDetectedShortcut,
             onSectionSelected = onSectionSelected,
             isOverlayPresentation = isOverlayPresentation,
-            showSearchField = true,
+            showSearchField = !LocalPinnedGlanceOnly.current,
             onOpenPermissionsSettings = onOpenPermissionsSettings,
             onHomePinnedSectionOrderChange = onHomePinnedSectionOrderChange,
             onChangeWallpaperClick = onChangeWallpaperClick,

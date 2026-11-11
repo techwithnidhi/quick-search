@@ -56,6 +56,8 @@ import com.tk.quicksearch.search.files.FileResultRow
 import com.tk.quicksearch.search.models.AppInfo
 import com.tk.quicksearch.search.models.CalendarEventInfo
 import com.tk.quicksearch.search.models.ReminderInfo
+import com.tk.quicksearch.search.models.BookmarkInfo
+import com.tk.quicksearch.search.data.bookmarks.BookmarkUrls
 import com.tk.quicksearch.search.reminders.ReminderRow
 import com.tk.quicksearch.search.models.ContactInfo
 import com.tk.quicksearch.search.models.DeviceFile
@@ -154,6 +156,22 @@ internal sealed interface TopMatchItem {
 
     data class Reminder(
         val reminder: ReminderInfo,
+        override val priority: Int,
+        override val sectionOrder: Int,
+        override val secondaryScore: Long,
+        override val index: Int,
+    ) : TopMatchItem
+
+    data class Bookmark(
+        val bookmark: BookmarkInfo,
+        override val priority: Int,
+        override val sectionOrder: Int,
+        override val secondaryScore: Long,
+        override val index: Int,
+    ) : TopMatchItem
+
+    data class Noted(
+        val item: com.tk.quicksearch.search.models.NotedItem,
         override val priority: Int,
         override val sectionOrder: Int,
         override val secondaryScore: Long,
@@ -389,6 +407,30 @@ private fun buildTopMatches(
                 priority = priority(reminder.title),
                 sectionOrder = order(SearchSection.REMINDERS),
                 // No open history; `index` keeps the repository's soonest-first order.
+                secondaryScore = 0L,
+                index = index,
+            )
+        }
+    }
+    if (isTopMatchesSectionEnabled(SearchSection.BOOKMARKS)) {
+        context.bookmarksList.forEachIndexed { index, bookmark ->
+            matches += TopMatchItem.Bookmark(
+                bookmark = bookmark,
+                // The site's domain counts like a nickname, one step below a name match.
+                priority = priority(bookmark.name, BookmarkUrls.displayHost(bookmark.url)),
+                sectionOrder = order(SearchSection.BOOKMARKS),
+                secondaryScore = 0L,
+                index = index,
+            )
+        }
+    }
+    if (isTopMatchesSectionEnabled(SearchSection.NOTED)) {
+        context.notedList.forEachIndexed { index, item ->
+            matches += TopMatchItem.Noted(
+                item = item,
+                priority = priority(item.title),
+                sectionOrder = order(SearchSection.NOTED),
+                // No open history; `index` keeps Noted's most-recently-updated-first order.
                 secondaryScore = 0L,
                 index = index,
             )

@@ -1,5 +1,6 @@
 package com.tk.quicksearch.search.appSettings
 
+import com.tk.quicksearch.notchGesture.NotchGestureSupport
 import android.content.Context
 import android.os.Build
 import com.tk.quicksearch.R
@@ -171,6 +172,7 @@ class AppSettingsRepository(
                 titleRes = R.string.settings_launch_options_title,
                 descriptionRes = R.string.settings_launch_options_desc,
                 destination = AppSettingsDestination.LAUNCH_OPTIONS,
+                keywords = if (NotchGestureSupport.isSupported(context)) listOf("notch") else emptyList(),
             )
             addNavigation(
                 id = "app_settings_edge_gesture",
@@ -334,9 +336,11 @@ class AppSettingsRepository(
                 titleRes = R.string.settings_gestures_title,
                 descriptionRes = R.string.settings_gestures_desc,
                 destination = AppSettingsDestination.GESTURES,
-                keywords = listOf("swipe", "quick note", "keyboard", "notifications"),
+                keywords = listOf("swipe", "quick note", "keyboard", "notifications") +
+                    if (NotchGestureSupport.isSupported(context)) listOf("notch") else emptyList(),
             )
             GESTURE_APP_SETTINGS.forEach { (id, titleRes, destination) ->
+                if (destination.isNotchGestureDestination && !NotchGestureSupport.isSupported(context)) return@forEach
                 addNavigation(
                     id = id,
                     titleRes = titleRes,
@@ -433,7 +437,13 @@ class AppSettingsRepository(
                 destination = AppSettingsDestination.REMINDERS_LIST,
                 keywords = listOf("reminder", "todo"),
             )
-
+            addNavigation(
+                id = "app_settings_bookmarks_list",
+                titleRes = R.string.section_bookmarks,
+                descriptionRes = R.string.settings_bookmarks_view_all_desc,
+                destination = AppSettingsDestination.BOOKMARKS_LIST,
+                keywords = listOf("bookmark", "website", "websites", "link", "links", "url", "favorites", "import bookmarks", "export bookmarks", "bookmark browser"),
+            )
             addToggle(
                 id = "app_toggle_overlay_mode",
                 titleRes = R.string.settings_overlay_mode_title,
@@ -602,6 +612,13 @@ class AppSettingsRepository(
                 descriptionRes = R.string.notification_dots_toggle_desc,
                 toggleKey = AppSettingsToggleKey.NOTIFICATION_DOTS,
                 keywords = listOf("badge", "notification", "dot", "unread"),
+            )
+            addToggle(
+                id = "app_toggle_speed_bump_outside_quick_search",
+                titleRes = R.string.speed_bump_outside_quick_search_title,
+                descriptionRes = R.string.speed_bump_outside_quick_search_desc,
+                toggleKey = AppSettingsToggleKey.SPEED_BUMP_OUTSIDE_QUICK_SEARCH,
+                keywords = listOf("speedbump", "speed bump", "pause", "delay", "launcher", "mindful", "addiction"),
             )
             addToggle(
                 id = "app_toggle_show_all_apps_button",

@@ -1,5 +1,6 @@
 package com.tk.quicksearch.settings.settingsDetailScreen
 
+import com.tk.quicksearch.notchGesture.NotchGestureSupport
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,7 +43,9 @@ fun LaunchOptionsSettings(
     onOpenFloatingButton: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isDefaultLauncher = LocalContext.current.isDefaultHomeApp()
+    val context = LocalContext.current
+    val isDefaultLauncher = context.isDefaultHomeApp()
+    val notchGesturesSupported = remember(context) { NotchGestureSupport.isSupported(context) }
     var showWidgetConfirmDialog by remember { mutableStateOf(false) }
 
     if (showWidgetConfirmDialog) {
@@ -160,6 +163,12 @@ fun LaunchOptionsSettings(
                         ),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
                 )
+
+                if (notchGesturesSupported) {
+                    HorizontalDivider(color = AppColors.SettingsDivider)
+
+                    NotchLaunchOptionRow()
+                }
             }
         }
     }

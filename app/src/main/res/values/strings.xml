@@ -39,6 +39,10 @@
     <string name="search_hint_files">Search Files…</string>
     <string name="search_hint_notes">Search Notes…</string>
     <string name="search_hint_reminders">Search Reminders…</string>
+    <string name="search_hint_bookmarks">Search Bookmarks…</string>
+    <string name="search_hint_noted" translatable="false">Search Noted…</string>
+    <string name="noted_item_list" translatable="false">List</string>
+    <string name="reminders_use_noted" translatable="false">Use Noted</string>
     <string name="search_hint_settings">Search Device Settings…</string>
     <string name="search_hint_static">Search Anything</string>
     <string name="search_hint_world_clock">Enter any place to get their local time</string>
@@ -107,7 +111,7 @@
     <string name="action_open_folder">Open Folder</string>
     <string name="action_open_keyboard">Open Keyboard</string>
     <string name="action_open_settings">Open settings</string>
-    <string name="settings_gestures_title">Home Gestures</string>
+    <string name="settings_gestures_title">Gestures</string>
     <string name="settings_gestures_desc">Customize swipe actions</string>
     <string name="settings_gesture_swipe_right">Swipe Right</string>
     <string name="settings_gesture_widget_panel">Widget Panel</string>
@@ -117,6 +121,20 @@
     <string name="settings_gesture_swipe_down">Swipe Down</string>
     <string name="settings_gesture_close_quick_search">Close Quick Search</string>
     <string name="settings_gesture_double_tap_home">Double Tap</string>
+    <string name="settings_gesture_single_tap">Single Tap</string>
+    <string name="settings_gesture_long_press">Long Press</string>
+    <string name="settings_gesture_open_quick_search">Open Quick Search</string>
+    <string name="settings_gesture_pinned_glance">Pinned &amp; At a Glance Items</string>
+    <string name="overlay_pinned_glance_empty">Nothing to show</string>
+    <string name="settings_gesture_play_pause_media">Pause/Play Media</string>
+    <string name="settings_notch_gestures_title">Notch Gestures</string>
+    <string name="settings_notch_gestures_desc">Tap the notch or camera cutout from any app</string>
+    <string name="settings_home_gestures_title">Home Gestures</string>
+    <string name="settings_home_gestures_desc">Swipe or tap anywhere on the home screen</string>
+    <string name="settings_notch_accessibility_needed">Accessibility permission is needed</string>
+    <string name="settings_notch_single_tap_search_title">Notch Single Tap</string>
+    <string name="settings_notch_double_tap_search_title">Notch Double Tap</string>
+    <string name="settings_notch_long_press_search_title">Notch Long Press</string>
     <string name="settings_gesture_two_finger_swipe_up_home">Two-Finger Swipe Up</string>
     <string name="settings_gesture_two_finger_swipe_down_home">Two-Finger Swipe Down</string>
     <string name="settings_gesture_settings">Settings</string>
@@ -128,9 +146,9 @@
     <string name="settings_gesture_lock_screen">Lock Screen</string>
     <string name="settings_gesture_lock_screen_requires_accessibility">Requires Accessibility Permission</string>
     <string name="accessibility_lock_screen_service_label">Quick Search</string>
-    <string name="accessibility_lock_screen_service_description">Allows Quick Search to lock the screen from the Home double-tap gesture and to open from an edge swipe or a floating button in any app. It does not read screen content.</string>
+    <string name="accessibility_lock_screen_service_description">Allows Quick Search to lock the screen from the Home double-tap gesture, respond to notch taps, open from an edge swipe or a floating button in any app, and show SpeedBump for apps opened outside Quick Search. It only checks which app is open and does not read screen content.</string>
     <string name="accessibility_permission_disclaimer_title">Accessibility Permission Disclaimer</string>
-    <string name="accessibility_lock_screen_disclosure_message">Quick Search uses Accessibility to:\n\n• Enable double-tap to lock screen gesture.\n• Open Quick Search using edge swipe gestures.\n• Open Quick Search using floating button.\n\nIt does not read, collect, store, or share your screen content or other personal data.</string>
+    <string name="accessibility_lock_screen_disclosure_message">Quick Search uses Accessibility to:\n\n• Enable double-tap to lock screen gesture.\n• Open Quick Search using edge swipe gestures.\n• Open Quick Search using floating button.\n• Run actions when you tap the notch.\n• Show SpeedBump when an app with SpeedBump is opened outside Quick Search. For this, it only checks which app is open.\n\nIt does not read, collect, store, or share your screen content or other personal data.</string>
     <string name="settings_gesture_none">None</string>
     <string name="settings_gesture_custom">Custom (Apps, Files etc.)</string>
     <string name="settings_keyboard_gestures_title">Keyboard Gestures</string>
@@ -292,6 +310,8 @@
     <string name="search_section_files_toggle_title">File Search</string>
     <string name="search_section_reminders_toggle_desc">Turn reminders search on or off</string>
     <string name="search_section_reminders_toggle_title">Reminders Search</string>
+    <string name="search_section_bookmarks_toggle_desc">Turn bookmarks search on or off</string>
+    <string name="search_section_bookmarks_toggle_title">Bookmarks Search</string>
     <string name="search_section_notes_toggle_desc">Turn notes search on or off</string>
     <string name="search_section_notes_toggle_title">Notes Search</string>
     <string name="section_app_settings">App Settings</string>
@@ -300,6 +320,7 @@
     <string name="section_calendar">Calendar Events</string>
     <string name="section_files">Files</string>
     <string name="section_notes">Notes</string>
+    <string name="section_noted" translatable="false">Noted</string>
     <string name="section_media">Media Controls</string>
     <string name="section_settings">Device Settings</string>
     <string name="search_section_menu_title">Search in</string>
@@ -397,8 +418,6 @@
     <string name="settings_app_shortcuts_add_query_shortcut">Custom Search Query</string>
     <string name="settings_app_shortcuts_add_success">Shortcut added.</string>
     <string name="settings_app_shortcuts_add_success_with_app_name">New shortcut is added to %1$s</string>
-    <string name="settings_app_shortcuts_add_url_dialog_title">Add URL Shortcut to %1$s</string>
-    <string name="settings_app_shortcuts_add_url_shortcut">Custom URL</string>
     <plurals name="settings_app_shortcuts_card_count">
         <item quantity="one">%d shortcut</item>
         <item quantity="other">%d shortcuts</item>
@@ -419,7 +438,6 @@
     <string name="settings_app_shortcuts_filter_all_apps">All Apps</string>
     <string name="all_apps_private_space">Private space</string>
     <string name="settings_app_shortcuts_filter_apps_with_shortcuts">Apps with Shortcuts</string>
-    <string name="settings_app_shortcuts_filter_browsers">Browsers</string>
     <string name="settings_app_shortcuts_filter_search_engines">Search Engines</string>
     <string name="settings_app_shortcuts_query_label">Query</string>
     <string name="settings_app_shortcuts_shortcut_name_label">Shortcut Name</string>
@@ -787,6 +805,8 @@
     <string name="settings_edge_gesture_visibility">Visibility</string>
     <string name="settings_floating_button_title">Floating Button</string>
     <string name="settings_floating_button_desc">Tap a floating search button to open Quick Search from any app</string>
+    <string name="settings_notch_title">Notch</string>
+    <string name="settings_notch_launch_desc">Tap the notch to open Quick Search</string>
     <string name="settings_floating_button_move_hint">Long press the button and drag it to move it anywhere on the screen.</string>
     <string name="settings_floating_button_opacity">Opacity</string>
     <string name="settings_app_language_title">App Language</string>
@@ -873,7 +893,8 @@
     <string name="settings_hidden_alarm_apps_title">Hidden Alarm Apps</string>
     <string name="settings_at_a_glance_events_desc">Today\'s calendar events</string>
     <string name="settings_at_a_glance_tomorrow_events">Show tomorrow\'s events the night before</string>
-    <string name="settings_upcoming_reminders_desc">Reminders due within 30 minutes or overdue</string>
+    <string name="settings_upcoming_reminders_desc">Reminders due within 1.5 hours or overdue</string>
+    <string name="settings_at_a_glance_tomorrow_reminders">Show tomorrow\'s all-day and morning reminders the night before</string>
     <string name="settings_at_a_glance_low_battery_title">Low Battery</string>
     <string name="settings_low_battery_desc">Your battery when it\'s at %1$d%% or lower</string>
     <string name="settings_at_a_glance_timers_title">Timers &amp; Stopwatch</string>
@@ -1232,7 +1253,7 @@
     <string name="permissions_notifications_desc">Needed for reminder notifications and to pin search results to notification panel</string>
     <string name="permissions_notification_access_desc">Needed to enable notification dots and notification history features</string>
     <string name="permissions_accessibility_lock_screen_title">Accessibility</string>
-    <string name="permissions_accessibility_lock_screen_desc">Needed for double-tap to lock screen gesture, launch Quick Search with edge swipe gesture or floating button</string>
+    <string name="permissions_accessibility_lock_screen_desc">Needed for double-tap to lock screen gesture, notch gestures, launch Quick Search with edge swipe gesture or floating button, and SpeedBump outside Quick Search</string>
     <string name="permissions_contacts_desc">Needed to search your contacts.</string>
     <string name="permissions_files_desc">Needed to search through your documents and other files.</string>
     <string name="permissions_files_title">Files Access</string>
@@ -1376,6 +1397,8 @@
     <string name="speed_bump_overlay_prompt">Opening %1$s soon…</string>
     <string name="speed_bump_overlay_title">Take a deep breath</string>
     <string name="speed_bump_title">SpeedBump</string>
+    <string name="speed_bump_outside_quick_search_title">Extend SpeedBump</string>
+    <string name="speed_bump_outside_quick_search_desc">Apply SpeedBump when apps are opened outside Quick Search</string>
     <string name="home_upcoming_alarm">Upcoming Alarm</string>
     <string name="home_upcoming_alarm_hide_app">Hide alarms from %1$s</string>
     <string name="home_low_battery_saver_off">Tap to turn on Battery Saver</string>
@@ -1399,6 +1422,10 @@
     <string name="home_otp_from">From %1$s</string>
     <string name="home_copied">Copied</string>
     <string name="home_reminder_marked_done">Reminder marked as done</string>
+    <string name="home_reminder_set">Reminder set for %1$s</string>
+    <string name="noted_reminder_set" translatable="false">Noted reminder created for %1$s</string>
+    <string name="home_reminder_set_today">today</string>
+    <string name="home_reminder_set_tomorrow">tomorrow</string>
     <string name="home_reminder_snoozed">Reminder snoozed for 30 minutes</string>
     <string name="home_reminder_deleted">Reminder deleted</string>
     <string name="home_missed_calls_count">Missed Calls (%1$s)</string>
@@ -1413,6 +1440,7 @@
     <string name="home_turn_off">Turn off</string>
     <!-- Reminders -->
     <string name="section_reminders">Reminders</string>
+    <string name="section_bookmarks">Bookmarks</string>
     <string name="reminders_notification_channel_name">Reminders</string>
     <string name="reminders_notification_channel_description">Notifications for reminders you create in Quick Search</string>
     <string name="reminder_notification_action_done">Done</string>
@@ -1429,6 +1457,29 @@
     <string name="action_expand_more_reminders">More Reminders</string>
     <string name="reminders_empty">No reminders yet</string>
     <string name="settings_reminders_view_all_desc">View all reminders</string>
+    <string name="action_expand_more_bookmarks">More Bookmarks</string>
+    <string name="settings_bookmarks_view_all_desc">Manage your website bookmarks</string>
+    <string name="bookmarks_empty">No bookmarks yet</string>
+    <string name="bookmarks_no_matches">No matching bookmarks</string>
+    <string name="bookmarks_import_title">Import bookmarks</string>
+    <string name="bookmarks_import_desc">From an HTML file exported by your browser</string>
+    <string name="bookmarks_import_failed">Couldn’t read that file</string>
+    <string name="bookmarks_import_none_found">No bookmarks found in that file</string>
+    <string name="bookmarks_import_result">Bookmarks imported: %1$d</string>
+    <string name="bookmarks_import_result_with_skipped">Bookmarks imported: %1$d. Already saved: %2$d</string>
+    <string name="bookmarks_menu_import_html">Import from HTML</string>
+    <string name="bookmarks_menu_delete_all">Delete All</string>
+    <string name="bookmarks_delete_all_title">Delete all bookmarks?</string>
+    <string name="bookmarks_delete_all_message">Every saved bookmark will be removed. This action cannot be undone.</string>
+    <string name="bookmarks_deleted">Bookmark deleted</string>
+    <string name="bookmarks_menu_export_html">Export as HTML</string>
+    <string name="bookmarks_export_result">Bookmarks exported: %1$d</string>
+    <string name="bookmarks_export_failed">Couldn’t save the file</string>
+    <string name="bookmarks_default_browser_desc">New and imported bookmarks open in this browser. You can still change it for each bookmark.</string>
+    <string name="bookmarks_add_title">Add Bookmark</string>
+    <string name="bookmarks_edit_title">Edit Bookmark</string>
+    <string name="bookmarks_link_label">Link</string>
+    <string name="bookmarks_invalid_link">Enter a valid web address</string>
     <string name="reminders_permission_hint">Need permission to show reminder notifications. Tap to allow.</string>
     <string name="reminders_home_card_dismiss">Remove from Home</string>
     <string name="settings_include_past_reminders_title">Past reminders</string>

@@ -59,7 +59,8 @@ private fun SearchSection.toExpandedSectionOrNone(): ExpandedSection =
         SearchSection.APP_SETTINGS -> ExpandedSection.APP_SETTINGS
         SearchSection.CALENDAR -> ExpandedSection.CALENDAR
         SearchSection.REMINDERS -> ExpandedSection.REMINDERS
-        SearchSection.APPS -> ExpandedSection.NONE
+        SearchSection.BOOKMARKS -> ExpandedSection.BOOKMARKS
+        SearchSection.NOTED, SearchSection.APPS -> ExpandedSection.NONE
     }
 
 @Composable
@@ -107,6 +108,8 @@ internal fun SearchScreenStateManagement(
     onMovePinnedNote: (NoteInfo, Boolean) -> Unit,
     onDeleteNote: (NoteInfo) -> Unit,
     reminderActions: com.tk.quicksearch.search.searchScreen.ReminderSectionActions = com.tk.quicksearch.search.searchScreen.ReminderSectionActions(),
+    onBookmarkClick: (com.tk.quicksearch.search.models.BookmarkInfo) -> Unit = {},
+    onNotedItemClick: (com.tk.quicksearch.search.models.NotedItem) -> Unit = {},
     onPinFile: (DeviceFile) -> Unit,
     onUnpinFile: (DeviceFile) -> Unit,
     onMovePinnedFile: (DeviceFile, Boolean) -> Unit,
@@ -451,6 +454,8 @@ internal fun SearchScreenStateManagement(
             onMovePinnedNote = onMovePinnedNote,
             onDeleteNote = onDeleteNote,
             reminderActions = reminderActions,
+            onBookmarkClick = onBookmarkClick,
+            onNotedItemClick = onNotedItemClick,
             onOpenAppSettings = onOpenAppSettings,
             onOpenCalendarPermissionSettings = onOpenCalendarPermissionSettings,
             onAppClick = onAppClick,
@@ -573,6 +578,11 @@ internal fun SearchScreenStateManagement(
             shouldShowReminders = derivedState.shouldShowReminders,
             reminderResults = state.reminderResults,
             pinnedReminders = state.pinnedReminders,
+            hasBookmarkResults = derivedState.hasBookmarkResults,
+            shouldShowBookmarks = derivedState.shouldShowBookmarks,
+            bookmarkResults = state.bookmarkResults,
+            hasNotedResults = derivedState.hasNotedResults,
+            notedResults = state.notedResults,
         )
 
     return SearchScreenStateResult(

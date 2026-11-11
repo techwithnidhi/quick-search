@@ -331,31 +331,16 @@ internal fun SearchScreenContent(
             }
     val shouldShowPhoneCallAction =
             keyboardSwitchText != null && state.query.isPhoneNumberQuery()
-    val detectedAlarmTime =
-            remember(state.query, isToolAliasMode) {
-                if (isToolAliasMode) {
-                    null
-                } else {
-                    SetAlarmHandler.detectAlarmTime(state.query)
-                }
-            }
-    val detectedTimerSeconds =
-            remember(state.query, isToolAliasMode) {
-                if (isToolAliasMode) {
-                    null
-                } else {
-                    StartTimerHandler.detectTimerSeconds(state.query)
-                }
-            }
-    val detectedReminderSchedule =
-            remember(state.query, isToolAliasMode) {
-                if (isToolAliasMode) {
-                    null
-                } else {
-                    ReminderNaturalLanguageParser.parse(state.query)
-                        ?.takeIf { it.title.isNotBlank() }
-                }
-            }
+    val detectedAlarmTime = remember(state.query, isToolAliasMode) {
+        if (isToolAliasMode) null else SetAlarmHandler.detectAlarmTime(state.query)
+    }
+    val detectedTimerSeconds = remember(state.query, isToolAliasMode) {
+        if (isToolAliasMode) null else StartTimerHandler.detectTimerSeconds(state.query)
+    }
+    val detectedReminderSchedule = remember(state.query, isToolAliasMode) {
+        if (isToolAliasMode) null
+        else ReminderNaturalLanguageParser.parse(state.query)?.takeIf { it.title.isNotBlank() }
+    }
     val predictedState = rememberPredictedSearchTargetState(
         state = state,
         renderingState = renderingState,
@@ -651,12 +636,12 @@ internal fun SearchScreenContent(
         LocalSearchColorTheme provides searchColorTheme,
         LocalAmoledThemeActive provides amoledSurfacesActive,
         LocalSearchResultQuery provides state.query.trim(),
+        LocalInsetCardBackdrop provides searchBarGeometry.insetCardBackdrop,
         com.tk.quicksearch.tools.calculator.LocalCalculatorResultQueryHandler provides onQueryChanged,
     ) {
     Column(modifier = contentModifier, verticalArrangement = Arrangement.Top) {
-        if (showSearchField && !showBottomSearchBar) {
-            searchFieldContent()
-        }
+        if (showSearchField && !showBottomSearchBar) searchFieldContent()
+        if (!showSearchField) PinnedGlanceFocusTarget(searchFocusRequester)
 
         if (showSearchField && !showBottomSearchBar && !state.oneHandedMode) {
             Spacer(modifier = Modifier.padding(top = DesignTokens.SpacingXSmall))
@@ -668,7 +653,7 @@ internal fun SearchScreenContent(
                         run {
                             val base =
                                     if (isOverlayPresentation) {
-                                        Modifier.fillMaxWidth().weight(1f)
+                                        Modifier.fillMaxWidth().let { if (showSearchField) it.weight(1f) else it }
                                     } else {
                                         Modifier.weight(1f)
                                     }
@@ -677,7 +662,7 @@ internal fun SearchScreenContent(
                             } else {
                                 base
                             }
-                        },
+                        }.insetCardBackdropSource(searchBarGeometry.insetCardBackdrop),
                 state = state,
                 renderingState = renderingState,
                 contactsParams = contactsParams,
@@ -742,8 +727,8 @@ internal fun SearchScreenContent(
         )
         }
 
-        // Pinned above the keyboard, outside the scrollable content.
-        SearchScreenBottomChrome(
+        // Pinned above the keyboard, outside the scrollable content. Pinned glance mode has none.
+        if (showSearchField) SearchScreenBottomChrome(
             state = state,
             expandedSection = expandedSection,
             keyboardSwitchText = keyboardSwitchText,
@@ -752,6 +737,7 @@ internal fun SearchScreenContent(
             detectedTimerSeconds = detectedTimerSeconds,
             detectedReminderSchedule = detectedReminderSchedule,
             onKeyboardSwitchToggle = onKeyboardSwitchToggle,
+            onQuickActionCompleted = onClearQuery,
             isSearchHistoryExpanded = isSearchHistoryExpanded,
             overlayCardColor = overlayCardColor,
             overlayDividerTint = overlayDividerTint,

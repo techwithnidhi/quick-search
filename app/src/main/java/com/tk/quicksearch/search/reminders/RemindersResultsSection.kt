@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,10 +34,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupProperties
 import com.tk.quicksearch.R
 import com.tk.quicksearch.search.calendar.calendarRelativeDateLabel
 import com.tk.quicksearch.search.models.ReminderInfo
+import com.tk.quicksearch.search.noted.NotedAppIcon
+import com.tk.quicksearch.search.noted.NotedLauncher
+import com.tk.quicksearch.search.noted.NotedGlanceTasks
 import com.tk.quicksearch.search.searchScreen.LocalOverlayDividerColor
 import com.tk.quicksearch.search.searchScreen.LocalOverlayResultCardColor
 import com.tk.quicksearch.search.searchScreen.SearchScreenConstants
@@ -50,6 +50,7 @@ import com.tk.quicksearch.search.searchScreen.components.rememberQueryHighlighte
 import com.tk.quicksearch.search.searchScreen.components.topPredictedRowContainer
 import com.tk.quicksearch.search.searchScreen.components.topPredictedRowContentPadding
 import com.tk.quicksearch.search.searchScreen.components.resultRowVerticalPadding
+import com.tk.quicksearch.shared.ui.components.AppDropdownMenu
 import com.tk.quicksearch.shared.ui.icons.MaterialSymbols
 import com.tk.quicksearch.shared.ui.theme.AppColors
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
@@ -177,8 +178,11 @@ internal fun ReminderRow(
     isPredicted: Boolean,
     showPinnedItemMenu: Boolean = false,
 ) {
+    val notedItem = reminder.notedItem
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val rowView = LocalView.current
+    // A Noted task opens and completes in Noted; pinning and deleting are for Quick Search reminders.
     Row(
         modifier =
             Modifier.fillMaxWidth()
@@ -187,7 +191,7 @@ internal fun ReminderRow(
                 .combinedClickable(
                     onClick = {
                         hapticConfirm(rowView)()
-                        onClick(reminder)
+                        if (notedItem != null) NotedLauncher.open(context, notedItem) else onClick(reminder)
                     },
                     onLongClick = { showMenu = true },
                 )
@@ -196,12 +200,16 @@ internal fun ReminderRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_reminder),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 7.dp).size(24.dp),
-        )
+        if (notedItem != null) {
+            NotedAppIcon(iconPackPackage = null, modifier = Modifier.padding(start = 7.dp).size(24.dp))
+        } else {
+            Icon(
+                painter = painterResource(R.drawable.ic_reminder),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 7.dp).size(24.dp),
+            )
+        }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -223,12 +231,9 @@ internal fun ReminderRow(
             ReminderRelativeDateText(reminder)
         }
 
-        DropdownMenu(
+        AppDropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            shape = RoundedCornerShape(24.dp),
-            properties = PopupProperties(focusable = false),
-            containerColor = AppColors.DialogBackground,
         ) {
             val menuItems =
                 buildList {
@@ -246,6 +251,7 @@ internal fun ReminderRow(
                             contentDescription = null,
                         )
                     }
+                    // Noted tasks pin from search results; here they only offer Unpin once pinned.
                     if (showPinnedItemMenu && isPinned) {
                         addItem(R.string.action_unpin_app, pinIcon) { onTogglePin(reminder) }
                         addItem(
@@ -256,11 +262,18 @@ internal fun ReminderRow(
                             R.string.action_move_down,
                             { Icon(imageVector = MaterialSymbols.ArrowDownward, contentDescription = null) },
                         ) { onMovePinned(reminder, false) }
-                    } else {
+                    } else if (notedItem == null) {
                         addItem(
                             if (isPinned) R.string.action_unpin_app else R.string.action_pin_app,
                             pinIcon,
                         ) { onTogglePin(reminder) }
+                    }
+                    if (notedItem != null) {
+                        addItem(
+                            R.string.action_mark_as_done,
+                            { Icon(imageVector = MaterialSymbols.Check, contentDescription = null) },
+                        ) { NotedGlanceTasks.completeInBackground(context, notedItem.id) }
+                        return@buildList
                     }
                     if (!reminder.isDone) {
                         addItem(

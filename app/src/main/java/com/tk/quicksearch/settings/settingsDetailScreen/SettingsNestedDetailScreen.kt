@@ -58,6 +58,7 @@ import com.tk.quicksearch.settings.NoteDeleteConfirmationDialog
 import com.tk.quicksearch.settings.NotesBulkDeleteConfirmationDialog
 import com.tk.quicksearch.shared.featureFlags.FeatureFlags
 import com.tk.quicksearch.tools.aiSearch.supportsThinkingControl
+import com.tk.quicksearch.settings.bookmarksSettings.BookmarksSettingsSection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -95,6 +96,8 @@ internal fun SettingsNestedDetailScreen(
     var calendarEventsSearchQuery by remember { mutableStateOf("") }
     var atAGlanceSearchQuery by remember { mutableStateOf("") }
     var remindersSearchQuery by remember { mutableStateOf("") }
+    var bookmarksSearchQuery by remember { mutableStateOf("") }
+    var bookmarksAddRequest by remember { mutableIntStateOf(0) }
     var notesSearchQuery by remember { mutableStateOf("") }
     var notificationHistorySearchQuery by remember { mutableStateOf("") }
     var showNotificationHistoryAppFilter by remember { mutableStateOf(false) }
@@ -230,6 +233,8 @@ internal fun SettingsNestedDetailScreen(
                                     )
                                 }
                             }
+                        } else if (detailType.hasHeaderMenu()) {
+                            { DetailHeaderMenu(detailType) }
                         } else if (detailType == SettingsDetailType.CUSTOM_TOOL_EDITOR && pendingAiBackedToolForEditor == null) {
                             val pendingToolIdForHeader = remember { CustomToolNavigationMemory.peekPendingToolId() }
                             val existingToolForHeader = remember(pendingToolIdForHeader, state.customTools) {
@@ -324,6 +329,14 @@ internal fun SettingsNestedDetailScreen(
                                 end = DesignTokens.ContentHorizontalPadding,
                                 bottom = 96.dp,
                             ),
+                )
+            } else if (detailType == SettingsDetailType.BOOKMARKS) {
+                BookmarksSettingsSection(
+                    searchQuery = bookmarksSearchQuery,
+                    availableBrowsers = state.searchEngineOrder.filterIsInstance<SearchTarget.Browser>().map { it.app },
+                    addRequest = bookmarksAddRequest,
+                    modifier = Modifier.settingsContentWidth().fillMaxHeight().align(Alignment.CenterHorizontally)
+                        .padding(start = DesignTokens.ContentHorizontalPadding, end = DesignTokens.ContentHorizontalPadding, bottom = 96.dp),
                 )
             } else if (detailType == SettingsDetailType.CALENDAR_EVENTS) {
                 CalendarEventsSettingsSection(
@@ -676,7 +689,6 @@ internal fun SettingsNestedDetailScreen(
                 when (detailType) {
                     SettingsDetailType.APP_SHORTCUTS -> appShortcutsSearchQuery
                     SettingsDetailType.APP_MANAGEMENT -> appManagementSearchQuery
-                    else -> ""
                 }
             SettingsManagementSearchBar(
                 query = query,
@@ -684,7 +696,6 @@ internal fun SettingsNestedDetailScreen(
                     when (detailType) {
                         SettingsDetailType.APP_SHORTCUTS -> appShortcutsSearchQuery = updatedQuery
                         SettingsDetailType.APP_MANAGEMENT -> appManagementSearchQuery = updatedQuery
-                        else -> Unit
                     }
                 },
                 onClear = {
@@ -694,7 +705,6 @@ internal fun SettingsNestedDetailScreen(
                             appShortcutsSearchQuery = ""
                         }
                         SettingsDetailType.APP_MANAGEMENT -> appManagementSearchQuery = ""
-                        else -> Unit
                     }
                 },
                 modifier = Modifier.align(Alignment.BottomEnd),
@@ -717,6 +727,12 @@ internal fun SettingsNestedDetailScreen(
                 onClear = { remindersSearchQuery = "" },
                 onNewEvent = ReminderEditorRequests::openNew,
                 newItemLabelResId = R.string.reminder_new_title,
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            )
+        } else if (detailType == SettingsDetailType.BOOKMARKS) {
+            CalendarEventsBottomBar(
+                query = bookmarksSearchQuery, onQueryChange = { bookmarksSearchQuery = it }, onClear = { bookmarksSearchQuery = "" },
+                onNewEvent = { bookmarksAddRequest++ }, newItemLabelResId = R.string.bookmarks_add_title,
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
             )
         } else if (detailType == SettingsDetailType.CALENDAR_EVENTS) {

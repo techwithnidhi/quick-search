@@ -14,6 +14,8 @@ internal class SearchVisibilityStateResolver {
             calendarSectionState = computeCalendarSectionVisibility(state),
             remindersSectionState = computeRemindersSectionVisibility(state),
             notesSectionState = computeNotesSectionVisibility(state),
+            bookmarksSectionState = computeBookmarksSectionVisibility(state),
+            notedSectionState = computeNotedSectionVisibility(state),
             searchEnginesState = computeSearchEnginesVisibility(state),
         )
 
@@ -168,6 +170,20 @@ internal class SearchVisibilityStateResolver {
             }
         }
     }
+
+    private fun computeBookmarksSectionVisibility(state: SearchUiState): BookmarksSectionVisibility =
+        when {
+            !isSectionEnabledForCurrentQuery(state, SearchSection.BOOKMARKS) -> BookmarksSectionVisibility.Hidden
+            state.bookmarkResults.isNotEmpty() -> BookmarksSectionVisibility.ShowingResults
+            else -> BookmarksSectionVisibility.NoResults
+        }
+
+    private fun computeNotedSectionVisibility(state: SearchUiState): NotedSectionVisibility =
+        when {
+            !isSectionEnabledForCurrentQuery(state, SearchSection.NOTED) -> NotedSectionVisibility.Hidden
+            state.notedResults.isNotEmpty() -> NotedSectionVisibility.ShowingResults
+            else -> NotedSectionVisibility.NoResults
+        }
 
     private fun computeNotesSectionVisibility(state: SearchUiState): NotesSectionVisibility {
         if (!FeatureFlags.isSearchSectionEnabled(SearchSection.NOTES)) {

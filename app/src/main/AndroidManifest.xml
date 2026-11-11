@@ -367,11 +367,15 @@
         </activity-alias>
 
         <!-- Search Activities -->
+        <!-- The overlay gets its own task so launching it from another app
+             (notch tap, edge gesture) doesn't bring the main app task forward
+             behind the transparent popup. -->
         <activity
             android:name=".overlay.OverlayActivity"
             android:exported="${profileCaptureExported}"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.overlay"
             android:theme="@style/Theme.QuickSearch"
             android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
 
@@ -444,6 +448,16 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="true"
+            android:theme="@style/Theme.QuickSearch" />
+
+        <!-- SpeedBump pause for apps opened outside Quick Search; started by the accessibility
+             service in its own task above the app. -->
+        <activity
+            android:name=".search.apps.speedBump.SpeedBumpActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.speedbump"
             android:theme="@style/Theme.QuickSearch" />
 
         <activity

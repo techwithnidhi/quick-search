@@ -52,6 +52,8 @@ object ItemPriorityConfig {
         CALENDAR_SECTION,
         REMINDERS_SECTION,
         NOTES_SECTION,
+        NOTED_SECTION,
+        BOOKMARKS_SECTION,
         APP_SETTINGS_SECTION,
 
         // Suggestion items

@@ -30,8 +30,13 @@ internal fun homeLayoutOrder(
             addAll(
                 baseLayoutOrder
                     .filter { itemType ->
+                        // Bookmarks and Noted items can't be pinned, so they have nothing to show on Home.
                         SearchSectionRegistry.sectionForItemType(itemType)
-                            ?.let { it != SearchSection.APPS } == true
+                            ?.let {
+                                it != SearchSection.APPS &&
+                                    it != SearchSection.BOOKMARKS &&
+                                    it != SearchSection.NOTED
+                            } == true
                     }.sortedBy { itemType ->
                         pinnedSectionRank[SearchSectionRegistry.sectionForItemType(itemType)]
                             ?: Int.MAX_VALUE

@@ -467,9 +467,7 @@ abstract class BasePreferences(
         const val KEY_DEFAULT_CALENDAR_PACKAGE = "default_calendar_package"
         const val KEY_CUSTOM_CALENDAR_EVENTS_DATA = "custom_calendar_events_data"
         const val KEY_CUSTOM_CALENDAR_EVENT_ID_COUNTER = "custom_calendar_event_id_counter"
-        const val KEY_ARCHIVED_TODAY_CALENDAR_EVENT_IDS = "archived_today_calendar_event_ids"
-        const val KEY_ARCHIVED_TODAY_CALENDAR_EVENT_DATE = "archived_today_calendar_event_date"
-        const val KEY_SNOOZED_TODAY_CALENDAR_EVENTS = "snoozed_today_calendar_events"
+        const val KEY_GLANCE_HIDDEN_CALENDAR_EVENTS = "glance_hidden_calendar_events"
 
         // Notes preferences keys
         const val KEY_PINNED_NOTE_IDS = "pinned_note_ids"
@@ -478,6 +476,9 @@ abstract class BasePreferences(
         const val KEY_NOTE_ID_COUNTER = "note_id_counter"
         const val KEY_QUICK_NOTE_ID = "quick_note_id"
         const val KEY_QUICK_NOTE_ENABLED = "quick_note_enabled"
+
+        // Bookmarks preferences keys
+        const val KEY_BOOKMARK_DEFAULT_BROWSER = "bookmark_default_browser"
 
         // Reminders preferences keys
         const val KEY_REMINDERS_DATA = "reminders_data"
@@ -567,6 +568,7 @@ abstract class BasePreferences(
 
         // Amazon domain preferences keys
         const val KEY_AMAZON_DOMAIN = "amazon_domain"
+        const val KEY_AMAZON_DOMAIN_REGION_DETECTED = "amazon_domain_region_detected"
         const val KEY_AI_SEARCH_LLM_PROVIDER = "direct_search_llm_provider"
         const val KEY_GEMINI_API_KEY = "gemini_api_key"
         const val KEY_GEMINI_PERSONAL_CONTEXT = "gemini_personal_context"

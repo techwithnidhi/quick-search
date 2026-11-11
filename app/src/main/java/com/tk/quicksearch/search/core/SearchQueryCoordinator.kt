@@ -77,6 +77,8 @@ internal class SearchQueryCoordinator(
                 appShortcutResults = emptyList(),
                 calendarEvents = emptyList(),
                 reminderResults = emptyList(),
+                bookmarkResults = emptyList(),
+                notedResults = emptyList(),
                 noteResults = emptyList(),
             )
         }
@@ -436,6 +438,8 @@ internal class SearchQueryCoordinator(
                         appSettingResults = emptyList(),
                         calendarEvents = emptyList(),
                         reminderResults = emptyList(),
+                        bookmarkResults = emptyList(),
+                        notedResults = emptyList(),
                         noteResults = emptyList(),
                         AiSearchState = AiSearchState(),
                         currencyConverterState = CurrencyConverterState(),
@@ -481,6 +485,8 @@ internal class SearchQueryCoordinator(
                     appSettingResults = emptyList(),
                     calendarEvents = emptyList(),
                     reminderResults = emptyList(),
+                    bookmarkResults = emptyList(),
+                    notedResults = emptyList(),
                     noteResults = emptyList(),
                     AiSearchState = AiSearchState(),
                     currencyConverterState = CurrencyConverterState(),
@@ -656,6 +662,8 @@ internal class SearchQueryCoordinator(
                 appShortcutResults = if (shouldRunSecondarySearchBatch) state.appShortcutResults else emptyList(),
                 calendarEvents = if (shouldRunSecondarySearchBatch) state.calendarEvents else emptyList(),
                 reminderResults = if (shouldRunSecondarySearchBatch) state.reminderResults else emptyList(),
+                bookmarkResults = if (shouldRunSecondarySearchBatch) state.bookmarkResults else emptyList(),
+                notedResults = if (shouldRunSecondarySearchBatch) state.notedResults else emptyList(),
                 noteResults = if (shouldRunSecondarySearchBatch) state.noteResults else emptyList(),
                 aliasRecentItems = emptyList(),
                 aliasRecentRemovableKeys = emptySet(),
@@ -726,39 +734,13 @@ internal class SearchQueryCoordinator(
         if (!showingTool) {
             if (aliasState.lockedCurrencyConverterAlias || aliasState.lockedWorldClockAlias || aliasState.lockedDictionaryAlias || aliasState.lockedWeatherAlias || aliasState.lockedCustomToolId != null || aliasState.lockedTaskerIntentId != null) {
                 secondarySearchOrchestrator.cancel()
-                updateResultsState {
-                    it.copy(
-                        contactResults = emptyList(),
-                        fileResults = emptyList(),
-                        settingResults = emptyList(),
-                        appSettingResults = emptyList(),
-                        appShortcutResults = emptyList(),
-                        calendarEvents = emptyList(),
-                        reminderResults = emptyList(),
-                        noteResults = emptyList(),
-                        webSuggestions = emptyList(),
-                        webSuggestionsLoading = false,
-                    )
-                }
+                updateResultsState { it.withoutSecondaryResults() }
             } else if (detectedTarget != null) {
                 secondarySearchOrchestrator.performWebSuggestionsOnly(newQuery)
             } else if (detectedAliasSearchSection != null) {
                 if (detectedAliasSearchSection == SearchSection.APPS) {
                     secondarySearchOrchestrator.cancel()
-                    updateResultsState {
-                        it.copy(
-                            contactResults = emptyList(),
-                            fileResults = emptyList(),
-                            settingResults = emptyList(),
-                            appSettingResults = emptyList(),
-                            appShortcutResults = emptyList(),
-                            calendarEvents = emptyList(),
-                            reminderResults = emptyList(),
-                            noteResults = emptyList(),
-                            webSuggestions = emptyList(),
-                            webSuggestionsLoading = false,
-                        )
-                    }
+                    updateResultsState { it.withoutSecondaryResults() }
                 } else {
                     secondarySearchOrchestrator.performTargetedSecondarySearch(
                         query = newQuery,

@@ -17,6 +17,8 @@ import com.tk.quicksearch.search.appSettings.AppSettingsToggleKey
 import com.tk.quicksearch.overlay.OverlayModeController
 import com.tk.quicksearch.search.apps.notificationDots.NotificationDotsPermission
 import com.tk.quicksearch.search.apps.notificationDots.rememberNotificationDotsCheckedChange
+import com.tk.quicksearch.search.apps.speedBump.SpeedBumpOutsideQuickSearchToggleState
+import com.tk.quicksearch.search.apps.speedBump.rememberSpeedBumpOutsideQuickSearchToggleState
 import com.tk.quicksearch.search.data.AppNotificationsSettings
 import com.tk.quicksearch.search.searchScreen.searchScreenLayout.rememberAppNotificationsConfig
 import com.tk.quicksearch.search.searchScreen.searchScreenLayout.rememberResumeRefreshKey
@@ -39,10 +41,12 @@ internal fun rememberAppSettingToggleChecked(uiState: SearchUiState): (AppSettin
     val hasNotificationAccess =
         remember(context, refreshKey) { NotificationDotsPermission.hasNotificationListenerAccess(context) }
     val appNotificationsChecked = rememberAppNotificationsConfig()?.enabled == true && hasNotificationAccess
+    val speedBumpToggle = rememberSpeedBumpOutsideQuickSearchToggleState()
     return { setting ->
         when (val toggleKey = setting.toggleKey) {
             null -> false
             AppSettingsToggleKey.APP_NOTIFICATIONS -> appNotificationsChecked
+            AppSettingsToggleKey.SPEED_BUMP_OUTSIDE_QUICK_SEARCH -> speedBumpToggle.isOn
             else -> uiState.isAppSettingToggleEnabled(toggleKey)
         }
     }
@@ -54,6 +58,7 @@ internal data class RouteSettingActions(
     val activeDialog: MutableState<AppSettingRouteDialog?>,
     val activeGestureDialog: MutableState<GestureSettingTarget?>,
     val onOpenAppSettingDestination: (AppSettingsDestination) -> Unit,
+    val speedBumpToggle: SpeedBumpOutsideQuickSearchToggleState,
 )
 
 @Composable
@@ -82,6 +87,8 @@ internal fun rememberRouteSettingActions(
             )
         }
 
+    val speedBumpToggle = rememberSpeedBumpOutsideQuickSearchToggleState()
+
     val onAppNotificationsCheckedChange =
         rememberNotificationDotsCheckedChange { enabled -> AppNotificationsSettings.setEnabled(context, enabled) }
 
@@ -96,6 +103,7 @@ internal fun rememberRouteSettingActions(
         when (val toggleKey = setting.toggleKey) {
             AppSettingsToggleKey.NOTIFICATION_DOTS -> onNotificationDotsCheckedChange(enabled)
             AppSettingsToggleKey.APP_NOTIFICATIONS -> onAppNotificationsCheckedChange(enabled)
+            AppSettingsToggleKey.SPEED_BUMP_OUTSIDE_QUICK_SEARCH -> speedBumpToggle.setEnabled(enabled)
             AppSettingsToggleKey.OVERLAY_MODE -> {
                 val isDefaultHomeApp = context.isDefaultHomeApp()
                 val shouldEnableOverlay = enabled && !isDefaultHomeApp
@@ -201,6 +209,7 @@ internal fun rememberRouteSettingActions(
         activeDialog,
         activeGestureDialog,
         onOpenAppSettingDestination,
+        speedBumpToggle,
     )
 }
 
@@ -215,5 +224,8 @@ private fun AppSettingsDestination.toGestureSettingTargetOrNull(): GestureSettin
         AppSettingsDestination.GESTURE_TWO_FINGER_SWIPE_DOWN -> GestureSettingTarget.TWO_FINGER_SWIPE_DOWN
         AppSettingsDestination.GESTURE_OPEN_KEYBOARD -> GestureSettingTarget.OPEN_KEYBOARD
         AppSettingsDestination.GESTURE_CLOSE_KEYBOARD -> GestureSettingTarget.CLOSE_KEYBOARD
+        AppSettingsDestination.GESTURE_NOTCH_SINGLE_TAP -> GestureSettingTarget.NOTCH_SINGLE_TAP
+        AppSettingsDestination.GESTURE_NOTCH_DOUBLE_TAP -> GestureSettingTarget.NOTCH_DOUBLE_TAP
+        AppSettingsDestination.GESTURE_NOTCH_LONG_PRESS -> GestureSettingTarget.NOTCH_LONG_PRESS
         else -> null
     }

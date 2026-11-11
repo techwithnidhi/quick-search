@@ -1,9 +1,10 @@
 package com.tk.quicksearch.search.searchScreen.searchRoute
 
+import com.tk.quicksearch.search.searchScreen.LocalPinnedGlanceOnly
+import com.tk.quicksearch.search.searchScreen.forPinnedGlanceOnly
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.speech.RecognizerIntent
 import android.widget.Toast
@@ -11,7 +12,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import com.tk.quicksearch.search.core.intentHelpers.FileIntents
+import com.tk.quicksearch.shared.ui.components.AppUndoSnackbarHost
 import com.tk.quicksearch.shared.ui.components.LocalPopupOverlayContent
+import com.tk.quicksearch.shared.ui.components.LocalShowUndoSnackbar
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -46,7 +49,6 @@ import com.tk.quicksearch.search.core.SearchEngine
 import com.tk.quicksearch.search.core.SearchTarget
 import com.tk.quicksearch.search.data.preferences.SwipeGestureAction
 import com.tk.quicksearch.search.data.preferences.HomeSwipeGestureAction
-import com.tk.quicksearch.search.appSettings.AppSettingResultAction
 import com.tk.quicksearch.search.appSettings.AppSettingsDestination
 import com.tk.quicksearch.search.appSettings.LocalOpenAppSettingDestination
 import com.tk.quicksearch.search.appSettings.LocalAppSettingInlineControls
@@ -63,6 +65,7 @@ import com.tk.quicksearch.search.apps.LocalAllAppsDrawerController
 import com.tk.quicksearch.search.apps.appLock.LocalAppLockAuthenticator
 import com.tk.quicksearch.search.apps.appLock.LocalAppLockCredentialAuthenticator
 import com.tk.quicksearch.search.apps.speedBump.SpeedBump
+import com.tk.quicksearch.search.apps.speedBump.SpeedBumpLaunchWatcher
 import com.tk.quicksearch.search.apps.swipeGestures.AppSwipeGestures
 import com.tk.quicksearch.shared.permissions.PermissionHelper
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
@@ -115,7 +118,8 @@ fun SearchRoute(
     if (appSwipePickerRequest == null && snapshot != null && uiState.query == snapshot.query) {
         searchScreenSnapshot = null
     }
-    val searchScreenState = searchScreenSnapshot ?: uiState
+    val pinnedGlanceOnly = LocalPinnedGlanceOnly.current
+    val searchScreenState = (searchScreenSnapshot ?: uiState).let { if (pinnedGlanceOnly) it.forPinnedGlanceOnly() else it }
     val context = LocalContext.current
     val voiceInputLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -490,7 +494,7 @@ fun SearchRoute(
             onMovePinnedCalendarEvent = viewModel::movePinnedCalendarEvent,
             onExcludeCalendarEvent = onExcludeCalendarEventWithUndo,
             onIncludeCalendarEvent = viewModel::removeExcludedCalendarEvent,
-            onArchiveTodayCalendarEvent = { event -> viewModel.archiveTodayCalendarEvent(event.eventId) },
+            onArchiveTodayCalendarEvent = viewModel::markTodayCalendarEventDone,
             onNoteClick = { note ->
                 viewModel.trackRecentNoteTap(note)
                 NotesNavigationMemory.setPendingNoteId(note.noteId)
@@ -501,6 +505,8 @@ fun SearchRoute(
             onMovePinnedNote = viewModel::movePinnedNote,
             onDeleteNote = onDeleteNoteWithUndo,
             reminderActions = reminderActions,
+            onBookmarkClick = viewModel::openBookmark,
+            onNotedItemClick = viewModel::openNotedItem,
             onPinFile = viewModel::pinFile,
             onUnpinFile = viewModel::unpinFile,
             onMovePinnedFile = viewModel::movePinnedFile,
@@ -729,17 +735,14 @@ fun SearchRoute(
         }
 
         if (overlaySnackbarHostState == null) {
-            ExcludeUndoSnackbarHost(
+            AppUndoSnackbarHost(
                 hostState = snackbarHostState,
                 modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .imePadding()
-                        .padding(
-                            start = DesignTokens.SpacingLarge,
-                            end = DesignTokens.SpacingLarge,
-                            bottom = DesignTokens.SpacingHuge,
-                        ),
+                    Modifier.align(Alignment.BottomCenter).imePadding().padding(
+                        start = DesignTokens.SpacingLarge,
+                        end = DesignTokens.SpacingLarge,
+                        bottom = DesignTokens.SpacingHuge,
+                    ),
             )
         }
 
@@ -775,6 +778,7 @@ fun SearchRoute(
             onSpeedBumpOpen = { app ->
                 speedBumpApp = null
                 runAfterAppUnlock(app.packageName, app.appName) {
+                    SpeedBumpLaunchWatcher.allowLaunchFromQuickSearch(app.packageName)
                     viewModel.launchApp(app, context)
                 }
             },

@@ -90,13 +90,17 @@ fun ShortcutSourceRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DesignTokens.ItemRowSpacing),
     ) {
-        if (source.icon != null) {
+        val icon = rememberShortcutSourceIcon(source)
+        val iconBitmap = icon?.bitmap
+        if (iconBitmap != null) {
             Image(
-                bitmap = source.icon,
+                bitmap = iconBitmap,
                 contentDescription = source.label,
                 modifier = Modifier.size(DesignTokens.IconSize),
                 contentScale = ContentScale.Fit,
             )
+        } else if (icon == null) {
+            Box(modifier = Modifier.size(DesignTokens.IconSize))
         } else {
             Box(
                 modifier = Modifier.size(DesignTokens.IconSize),
@@ -134,11 +138,7 @@ fun SearchTargetShortcutSourceRow(
     source: SearchTargetShortcutSource,
     onClick: () -> Unit,
 ) {
-    val actionLabelResId =
-        when (source.kind) {
-            SearchTargetShortcutKind.QUERY -> R.string.settings_app_shortcuts_add_query_shortcut
-            SearchTargetShortcutKind.URL -> R.string.settings_app_shortcuts_add_url_shortcut
-        }
+    val actionLabelResId = R.string.settings_app_shortcuts_add_query_shortcut
     Row(
         modifier =
             Modifier
@@ -193,13 +193,17 @@ fun AppDeepLinkSourceRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(DesignTokens.ItemRowSpacing),
     ) {
-        if (source.icon != null) {
+        val icon = rememberShortcutSourceIcon(source)
+        val iconBitmap = icon?.bitmap
+        if (iconBitmap != null) {
             Image(
-                bitmap = source.icon,
+                bitmap = iconBitmap,
                 contentDescription = source.appLabel,
                 modifier = Modifier.size(DesignTokens.IconSize),
                 contentScale = ContentScale.Fit,
             )
+        } else if (icon == null) {
+            Box(modifier = Modifier.size(DesignTokens.IconSize))
         } else {
             Icon(
                 imageVector = MaterialSymbols.Public,
@@ -396,13 +400,12 @@ fun AddAppDeepLinkDialog(
 @Composable
 fun AddSearchTargetShortcutDialog(
     targetLabel: String,
-    shortcutKind: SearchTargetShortcutKind,
     onDismiss: () -> Unit,
     onSave: (String, String) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val nameFocusRequester = remember { FocusRequester() }
-    var shortcutName by remember(targetLabel, shortcutKind) {
+    var shortcutName by remember(targetLabel) {
         mutableStateOf(
             TextFieldValue(
                 text = "",
@@ -410,7 +413,7 @@ fun AddSearchTargetShortcutDialog(
             ),
         )
     }
-    var shortcutValue by remember(targetLabel, shortcutKind) {
+    var shortcutValue by remember(targetLabel) {
         mutableStateOf(
             TextFieldValue(
                 text = "",
@@ -422,16 +425,8 @@ fun AddSearchTargetShortcutDialog(
     val trimmedName = shortcutName.text.trim()
     val trimmedValue = shortcutValue.text.trim()
     val canSave = trimmedName.isNotBlank() && trimmedValue.isNotBlank()
-    val titleResId =
-        when (shortcutKind) {
-            SearchTargetShortcutKind.QUERY -> R.string.settings_app_shortcuts_add_query_dialog_title
-            SearchTargetShortcutKind.URL -> R.string.settings_app_shortcuts_add_url_dialog_title
-        }
-    val valueLabelResId =
-        when (shortcutKind) {
-            SearchTargetShortcutKind.QUERY -> R.string.settings_app_shortcuts_query_label
-            SearchTargetShortcutKind.URL -> R.string.settings_app_shortcuts_url_label
-        }
+    val titleResId = R.string.settings_app_shortcuts_add_query_dialog_title
+    val valueLabelResId = R.string.settings_app_shortcuts_query_label
 
     LaunchedEffect(Unit) {
         nameFocusRequester.requestFocus()
@@ -454,14 +449,7 @@ fun AddSearchTargetShortcutDialog(
                 )
                 OutlinedTextField(
                     value = shortcutValue,
-                    onValueChange = {
-                        shortcutValue =
-                            if (shortcutKind == SearchTargetShortcutKind.URL) {
-                                it.withoutWhitespaces()
-                            } else {
-                                it
-                            }
-                    },
+                    onValueChange = { shortcutValue = it },
                     singleLine = false,
                     maxLines = 3,
                     label = { Text(stringResource(valueLabelResId)) },

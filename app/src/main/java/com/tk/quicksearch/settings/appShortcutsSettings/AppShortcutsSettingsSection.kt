@@ -1,5 +1,6 @@
 package com.tk.quicksearch.settings.appShortcutsSettings
 
+import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import com.tk.quicksearch.settings.shared.SettingsCard
 import androidx.compose.material3.HorizontalDivider
@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
@@ -45,10 +44,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupProperties
 import com.tk.quicksearch.R
 import com.tk.quicksearch.search.core.SearchTarget
 import com.tk.quicksearch.searchEngines.getDisplayNameResId
+import com.tk.quicksearch.searchEngines.isInAppBrowserPackage
 import com.tk.quicksearch.search.data.appShortcutRepository.StaticShortcut
 import com.tk.quicksearch.search.data.appShortcutRepository.SearchTargetShortcutMode
 import com.tk.quicksearch.search.data.appShortcutRepository.areAllAppShortcutsDisabled
@@ -58,6 +57,7 @@ import com.tk.quicksearch.search.data.appShortcutRepository.shortcutDisplayName
 import com.tk.quicksearch.search.data.appShortcutRepository.shortcutKey
 import com.tk.quicksearch.searchEngines.getDisplayName
 import com.tk.quicksearch.searchEngines.isSearchTargetShortcutPackageName
+import com.tk.quicksearch.shared.ui.components.AppDropdownMenu
 import com.tk.quicksearch.shared.ui.icons.MaterialSymbols
 import com.tk.quicksearch.shared.ui.theme.AppColors
 import com.tk.quicksearch.shared.ui.theme.DesignTokens
@@ -100,48 +100,6 @@ val context = LocalContext.current
             val exists = shortcuts.any { shortcutKey(it) == shortcutKey(shortcutToFocus) }
             if (exists) shortcuts else shortcuts + shortcutToFocus
         }
-    val filteredShortcutSources =
-        remember(shortcutSources, displayShortcuts, context.packageName) {
-            filterAppShortcutSources(
-                sources = shortcutSources,
-                existingShortcuts = displayShortcuts,
-            )
-        }
-    val searchTargetShortcutSources by remember(searchTargets, displayShortcuts, filteredShortcutSources) {
-        derivedStateOf {
-            val existingPackageNames =
-                (
-                    displayShortcuts.map { it.packageName } +
-                        filteredShortcutSources.map { it.packageName }
-                ).toSet()
-            searchTargets
-                .flatMap { target ->
-                    val baseSource =
-                        SearchTargetShortcutSource(
-                            target = target,
-                            packageName =
-                                com.tk.quicksearch.searchEngines.resolveSearchTargetShortcutPackageName(
-                                    target = target,
-                                    existingPackages = existingPackageNames,
-                                ),
-                            label = when (target) {
-                                is SearchTarget.Engine -> context.getString(target.engine.getDisplayNameResId())
-                                is SearchTarget.Browser -> target.app.label
-                                is SearchTarget.Custom -> target.custom.name
-                            },
-                            kind = SearchTargetShortcutKind.QUERY,
-                        )
-                    if (target is SearchTarget.Browser) {
-                        listOf(
-                            baseSource,
-                            baseSource.copy(kind = SearchTargetShortcutKind.URL),
-                        )
-                    } else {
-                        listOf(baseSource)
-                    }
-                }
-        }
-    }
     val browserPackageNames =
         remember(searchTargets) {
             searchTargets
@@ -155,12 +113,27 @@ val context = LocalContext.current
         produceState<List<AppShortcutGroup>?>(
             initialValue = null,
             displayShortcuts,
-            filteredShortcutSources,
-            searchTargetShortcutSources,
+            shortcutSources,
+            searchTargets,
             locale,
         ) {
             value =
                 withContext(Dispatchers.Default) {
+                    val filteredShortcutSources =
+                        filterAppShortcutSources(
+                            sources = shortcutSources,
+                            existingShortcuts = displayShortcuts,
+                        )
+                    val searchTargetShortcutSources =
+                        buildSearchTargetShortcutSources(
+                            context = context,
+                            searchTargets = searchTargets,
+                            existingPackageNames =
+                                (
+                                    displayShortcuts.map { it.packageName } +
+                                        filteredShortcutSources.map { it.packageName }
+                                ).toSet(),
+                        )
                     val shortcutsByPackage = displayShortcuts.groupBy { it.packageName }
                     val sourcesByPackage = filteredShortcutSources.groupBy { it.packageName }
                     val searchTargetSourcesByPackage = searchTargetShortcutSources.groupBy { it.packageName }
@@ -247,10 +220,6 @@ val context = LocalContext.current
                     ShortcutFilterOption.APPS_WITH_SHORTCUTS -> shortcutGroups.filter { it.shortcuts.isNotEmpty() }
                     ShortcutFilterOption.SEARCH_ENGINES ->
                         shortcutGroups.filter { it.searchTargetSources.isNotEmpty() }
-                    ShortcutFilterOption.BROWSERS ->
-                        shortcutGroups.filter { group ->
-                            group.searchTargetSources.any { it.target is SearchTarget.Browser }
-                        }
                 }
             }
         }
@@ -308,15 +277,9 @@ val context = LocalContext.current
     shortcutDialogSource?.let { source ->
         AddSearchTargetShortcutDialog(
             targetLabel = source.label,
-            shortcutKind = source.kind,
             onDismiss = { shortcutDialogSource = null },
             onSave = { shortcutName, shortcutValue ->
-                val mode =
-                    when (source.kind) {
-                        SearchTargetShortcutKind.QUERY -> SearchTargetShortcutMode.FORCE_SEARCH
-                        SearchTargetShortcutKind.URL -> SearchTargetShortcutMode.FORCE_URL
-                    }
-                onAddQueryShortcut(source.target, shortcutName, shortcutValue, mode)
+                onAddQueryShortcut(source.target, shortcutName, shortcutValue, SearchTargetShortcutMode.FORCE_SEARCH)
                 shortcutDialogSource = null
             },
         )
@@ -416,12 +379,9 @@ val context = LocalContext.current
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
-                            DropdownMenu(
+                            AppDropdownMenu(
                                 expanded = isFilterMenuExpanded,
                                 onDismissRequest = { isFilterMenuExpanded = false },
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                                properties = PopupProperties(focusable = false),
-                                containerColor = AppColors.DialogBackground,
                             ) {
                                 ShortcutFilterOption.entries.forEachIndexed { index, option ->
                                     if (index > 0) {
@@ -658,3 +618,28 @@ private fun boldFormatArgs(
         }
         append(template.substring(cursor))
     }
+
+private fun buildSearchTargetShortcutSources(
+    context: Context,
+    searchTargets: List<SearchTarget>,
+    existingPackageNames: Set<String>,
+): List<SearchTargetShortcutSource> =
+    // Websites live in Bookmarks, so browsers only offer query shortcuts and the in-app browser none.
+    searchTargets
+        .filterNot { it is SearchTarget.Browser && isInAppBrowserPackage(it.app.packageName) }
+        .map { target ->
+            SearchTargetShortcutSource(
+                target = target,
+                packageName =
+                    com.tk.quicksearch.searchEngines.resolveSearchTargetShortcutPackageName(
+                        target = target,
+                        existingPackages = existingPackageNames,
+                    ),
+                label =
+                    when (target) {
+                        is SearchTarget.Engine -> context.getString(target.engine.getDisplayNameResId())
+                        is SearchTarget.Browser -> target.app.label
+                        is SearchTarget.Custom -> target.custom.name
+                    },
+            )
+        }

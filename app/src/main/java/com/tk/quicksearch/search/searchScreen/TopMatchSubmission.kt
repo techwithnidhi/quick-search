@@ -69,6 +69,8 @@ internal fun rememberTopMatchSubmission(
                     remindersParams = remindersParams,
                     appsParams = appsParams,
                     isReversed = state.oneHandedMode,
+                    bookmarksParams = com.tk.quicksearch.search.bookmarks.LocalBookmarksSectionParams.current,
+                    notedParams = com.tk.quicksearch.search.noted.LocalNotedSectionParams.current,
             )
     val currentTopMatchesForSubmit =
             rememberTopMatches(

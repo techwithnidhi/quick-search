@@ -28,6 +28,7 @@ internal fun AppSettingsDestination.toSettingsDetailTypeOrNull(): SettingsDetail
         AppSettingsDestination.API_KEY_SETUP -> SettingsDetailType.API_KEY_SETUP
         AppSettingsDestination.CALENDAR_EVENTS -> SettingsDetailType.CALENDAR_EVENTS
         AppSettingsDestination.REMINDERS_LIST -> SettingsDetailType.REMINDERS
+        AppSettingsDestination.BOOKMARKS_LIST -> SettingsDetailType.BOOKMARKS
         AppSettingsDestination.NICKNAMES -> SettingsDetailType.NICKNAMES
         AppSettingsDestination.TRIGGERS -> SettingsDetailType.TRIGGERS
         AppSettingsDestination.GESTURES,
@@ -39,7 +40,10 @@ internal fun AppSettingsDestination.toSettingsDetailTypeOrNull(): SettingsDetail
         AppSettingsDestination.GESTURE_TWO_FINGER_SWIPE_UP,
         AppSettingsDestination.GESTURE_TWO_FINGER_SWIPE_DOWN,
         AppSettingsDestination.GESTURE_OPEN_KEYBOARD,
-        AppSettingsDestination.GESTURE_CLOSE_KEYBOARD -> SettingsDetailType.GESTURES
+        AppSettingsDestination.GESTURE_CLOSE_KEYBOARD,
+        AppSettingsDestination.GESTURE_NOTCH_SINGLE_TAP,
+        AppSettingsDestination.GESTURE_NOTCH_DOUBLE_TAP,
+        AppSettingsDestination.GESTURE_NOTCH_LONG_PRESS -> SettingsDetailType.GESTURES
         AppSettingsDestination.FEATURES_LIST -> SettingsDetailType.FEATURES_LIST
         AppSettingsDestination.OPEN_SOURCE_LICENSES -> SettingsDetailType.OPEN_SOURCE_LICENSES
         AppSettingsDestination.UNIT_CONVERTER_INFO -> SettingsDetailType.UNIT_CONVERTER_INFO

@@ -1,5 +1,6 @@
 package com.tk.quicksearch.settings.settingsDetailScreen
 
+import com.tk.quicksearch.notchGesture.NotchGestureSupport
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.clickable
@@ -16,10 +17,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -76,10 +75,20 @@ internal enum class HomeGesture(val titleResId: Int, val defaultAction: HomeSwip
     DOUBLE_TAP(R.string.settings_gesture_double_tap_home, HomeSwipeGestureAction.NONE),
     TWO_FINGER_SWIPE_UP(R.string.settings_gesture_two_finger_swipe_up_home, HomeSwipeGestureAction.NONE),
     TWO_FINGER_SWIPE_DOWN(R.string.settings_gesture_two_finger_swipe_down_home, HomeSwipeGestureAction.NONE),
+    NOTCH_SINGLE_TAP(R.string.settings_gesture_single_tap, HomeSwipeGestureAction.NONE),
+    NOTCH_DOUBLE_TAP(R.string.settings_gesture_double_tap_home, HomeSwipeGestureAction.NONE),
+    NOTCH_LONG_PRESS(R.string.settings_gesture_long_press, HomeSwipeGestureAction.NONE),
 }
 
 internal val HomeGesture.isTwoFinger: Boolean
     get() = this == HomeGesture.TWO_FINGER_SWIPE_UP || this == HomeGesture.TWO_FINGER_SWIPE_DOWN
+
+/** Notch taps run system-wide from the accessibility service rather than on the Home screen. */
+internal val HomeGesture.isNotch: Boolean
+    get() =
+        this == HomeGesture.NOTCH_SINGLE_TAP ||
+            this == HomeGesture.NOTCH_DOUBLE_TAP ||
+            this == HomeGesture.NOTCH_LONG_PRESS
 
 internal enum class AliasPickerKind { SEARCH_ENGINE, TOOL }
 
@@ -91,9 +100,15 @@ fun GesturesSettingsSection(
     val searchState by searchViewModel.uiState.collectAsStateWithLifecycle()
     val state = rememberGestureSettingsState(searchViewModel)
     GestureSettingsDialogs(state, searchViewModel)
+    val context = LocalContext.current
+    val notchGesturesSupported = remember(context) { NotchGestureSupport.isSupported(context) }
 
     Column(modifier = modifier) {
-        SettingsCard(modifier = Modifier.fillMaxWidth().padding(bottom = DesignTokens.SectionTopPadding)) {
+        SettingsCard(
+            modifier = Modifier.fillMaxWidth().padding(bottom = DesignTokens.SectionTopPadding),
+            title = stringResource(R.string.settings_home_gestures_title),
+            description = stringResource(R.string.settings_home_gestures_desc),
+        ) {
             Column {
                 val gestureDirections = SwipeDirection.entries
                 gestureDirections.forEachIndexed { index, direction ->
@@ -152,27 +167,20 @@ fun GesturesSettingsSection(
             }
         }
 
-        SettingsCard(modifier = Modifier.fillMaxWidth()) {
+        if (notchGesturesSupported) {
+            NotchGesturesCard(
+                state = state,
+                searchState = searchState,
+                modifier = Modifier.fillMaxWidth().padding(bottom = DesignTokens.SectionTopPadding),
+            )
+        }
+
+        SettingsCard(
+            modifier = Modifier.fillMaxWidth(),
+            title = stringResource(R.string.settings_keyboard_gestures_title),
+            description = stringResource(R.string.settings_keyboard_gestures_desc),
+        ) {
             Column {
-                Column(
-                    modifier = Modifier.padding(
-                        horizontal = DesignTokens.CardHorizontalPadding,
-                        vertical = DesignTokens.CardVerticalPadding,
-                    ),
-                ) {
-                    Text(
-                        text = stringResource(R.string.settings_keyboard_gestures_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_keyboard_gestures_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = DesignTokens.SpacingXSmall),
-                    )
-                }
-                HorizontalDivider(color = AppColors.SettingsDivider)
                 SettingsNavigationRow(
                     item = SettingsCardItem(
                         title = stringResource(R.string.action_open_keyboard),

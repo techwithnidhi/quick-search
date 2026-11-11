@@ -1,7 +1,10 @@
 package com.tk.quicksearch.reminders
 
 import android.Manifest
+import android.content.Context
 import android.os.Build
+import android.text.format.DateFormat
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Icon
@@ -22,11 +25,15 @@ import com.tk.quicksearch.R
 import com.tk.quicksearch.search.data.ReminderRepository
 import com.tk.quicksearch.search.data.preferences.ReminderPreferences
 import com.tk.quicksearch.search.models.ReminderInfo
+import com.tk.quicksearch.search.noted.NotedIntegration
+import com.tk.quicksearch.search.noted.NotedRepository
 import com.tk.quicksearch.settings.settingsDetailScreen.ReminderFormDialog
 import com.tk.quicksearch.settings.settingsDetailScreen.FormDateTimeSuggestion
 import com.tk.quicksearch.shared.permissions.PermissionHelper
 import com.tk.quicksearch.shared.ui.icons.MaterialSymbols
 import java.time.Instant
+import java.time.LocalDate
+import java.util.Date
 import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +46,8 @@ sealed interface ReminderEditorRequest {
         val initialDateTimeMillis: Long? = null,
         val initialAllDay: Boolean = true,
         val autoFocusTitle: Boolean = true,
+        /** Runs after the reminder is saved (not on dismiss), e.g. to clear the search query. */
+        val onCreated: (() -> Unit)? = null,
     ) : ReminderEditorRequest
 
     data class Edit(val reminder: ReminderInfo) : ReminderEditorRequest
@@ -53,12 +62,14 @@ object ReminderEditorRequests {
         initialDateTimeMillis: Long? = null,
         initialAllDay: Boolean = true,
         autoFocusTitle: Boolean = true,
+        onCreated: (() -> Unit)? = null,
     ) {
         _request.value = ReminderEditorRequest.New(
             initialTitle,
             initialDateTimeMillis,
             initialAllDay,
             autoFocusTitle,
+            onCreated,
         )
     }
 
@@ -78,6 +89,8 @@ fun ReminderEditorHost() {
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val context = LocalContext.current
     val repository = remember(context) { ReminderRepository(context) }
+    val reminderPreferences = remember(context) { ReminderPreferences(context) }
+    val notedRepository = remember(context) { NotedRepository(context) }
     // Registered before the gate so the permission result still arrives while the prompt pauses us.
     val requestPermissionsIfFirst = rememberFirstReminderPermissionFlow()
     // Both the main and overlay activities host this. The overlay can be translucent, leaving the
@@ -97,8 +110,31 @@ fun ReminderEditorHost() {
                 onSave = { title, dateTimeMillis, allDay ->
                     ReminderEditorRequests.close()
                     val (date, timeMinutes) = toReminderSchedule(dateTimeMillis, allDay)
-                    repository.createReminder(title, date, timeMinutes)
-                    requestPermissionsIfFirst()
+                    if (reminderPreferences.isUseNotedEnabled() && NotedIntegration.ensureChecked(context)) {
+                        // Noted schedules its own notification. The save outlives this screen (onCreated
+                        // may close the overlay), so it uses the application context throughout; if
+                        // Noted refuses the task, it is kept here instead.
+                        val appContext = context.applicationContext
+                        notedRepository.createTaskInBackground(title, dateTimeMillis, isDueTimeSet = !allDay) { added ->
+                            val message =
+                                if (added) {
+                                    ReminderRepository.notifyChanged()
+                                    reminderSetMessage(
+                                        appContext,
+                                        ReminderInfo(0L, title, date, timeMinutes),
+                                        R.string.noted_reminder_set,
+                                    )
+                                } else {
+                                    reminderSetMessage(appContext, ReminderRepository(appContext).createReminder(title, date, timeMinutes))
+                                }
+                            Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        val created = repository.createReminder(title, date, timeMinutes)
+                        Toast.makeText(context, reminderSetMessage(context, created), Toast.LENGTH_SHORT).show()
+                        requestPermissionsIfFirst()
+                    }
+                    current.onCreated?.invoke()
                 },
                 onDelete = null,
             )
@@ -253,4 +289,22 @@ fun rememberMissingReminderPermissionRequester(onResult: () -> Unit = {}): () ->
             ReminderPermissions.openExactAlarmSettings(context)
         }
     }
+}
+
+/** "Reminder set for today, 5:30 PM", so the user can check the date and time that was understood. */
+private fun reminderSetMessage(
+    context: Context,
+    reminder: ReminderInfo,
+    messageResId: Int = R.string.home_reminder_set,
+): String {
+    val today = LocalDate.now()
+    val day =
+        when (reminder.date) {
+            today -> context.getString(R.string.home_reminder_set_today)
+            today.plusDays(1) -> context.getString(R.string.home_reminder_set_tomorrow)
+            else -> DateFormat.format(DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "EEEMMMd"), Date(reminder.dayStartMillis)).toString()
+        }
+    val whenText =
+        if (reminder.hasTime) "$day, ${DateFormat.getTimeFormat(context).format(Date(reminder.dueMillis))}" else day
+    return context.getString(messageResId, whenText)
 }

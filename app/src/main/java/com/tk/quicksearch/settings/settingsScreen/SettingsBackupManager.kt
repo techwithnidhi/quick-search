@@ -13,6 +13,8 @@ import com.tk.quicksearch.search.data.preferences.UiPreferences
 import com.tk.quicksearch.search.data.NotesRepository
 import com.tk.quicksearch.search.data.ReminderRepository
 import com.tk.quicksearch.search.data.notes.NotesRoomStore
+import com.tk.quicksearch.search.data.bookmarks.BookmarkBackupCodec
+import com.tk.quicksearch.search.data.bookmarks.BookmarkRepository
 import com.tk.quicksearch.widgets.utils.requestNoteWidgetsRefresh
 import com.tk.quicksearch.search.data.userAppPreferences.UserAppPreferences
 import com.tk.quicksearch.search.models.NoteInfo
@@ -37,6 +39,8 @@ object SettingsBackupManager {
         API_KEYS,
         CALENDAR_EVENTS,
         REMINDERS,
+        BOOKMARKS,
+        SEARCH_HISTORY,
     }
 
     /** Export item names written by older app versions, mapped to their current item. */
@@ -51,6 +55,8 @@ object SettingsBackupManager {
                 ExportItem.NOTES,
                 ExportItem.SEARCH_ENGINES,
                 ExportItem.REMINDERS,
+                ExportItem.BOOKMARKS,
+                ExportItem.SEARCH_HISTORY,
             ),
     ) {
         fun includes(item: ExportItem): Boolean = item in selectedItems
@@ -70,6 +76,7 @@ object SettingsBackupManager {
     private const val FIELD_CUSTOM_LLM_PROVIDERS = "customLlmProviders"
     private const val FIELD_SELECTED_EXPORT_ITEMS = "selectedExportItems"
     private const val FIELD_NOTES = "notes"
+    private const val FIELD_BOOKMARKS = "bookmarks"
     // The icon pack lives in session prefs, which aren't exported, so it travels as its own field.
     private const val FIELD_SELECTED_ICON_PACK = "selectedIconPack"
     private const val FIELD_TYPE = "type"
@@ -164,6 +171,9 @@ object SettingsBackupManager {
                     if (options.includes(ExportItem.NOTES)) {
                         put(FIELD_NOTES, serializeNotes(NotesRepository(context).getAllNotes()))
                     }
+                    if (options.includes(ExportItem.BOOKMARKS)) {
+                        put(FIELD_BOOKMARKS, BookmarkBackupCodec.serialize(BookmarkRepository(context).getAll()))
+                    }
                     if (options.includes(ExportItem.SETTINGS)) {
                         userPreferences.getSelectedIconPackPackage()?.let { put(FIELD_SELECTED_ICON_PACK, it) }
                     }
@@ -235,6 +245,8 @@ object SettingsBackupManager {
             if (prefEntries != null) {
                 prefEntries.keys().forEach { key ->
                     if (shouldExcludeKey(prefName, key)) return@forEach
+                    // Backups from before the history option never carry history; don't restore it from them.
+                    if (selectedExportItems == null && isSearchHistoryKey(prefName, key)) return@forEach
                     if (
                         importOptions != null &&
                             !shouldIncludeKeyForExport(prefName, key, importOptions)
@@ -291,6 +303,14 @@ object SettingsBackupManager {
                     )
             notesStore.replaceFromBackup(notes)
             requestNoteWidgetsRefresh(context)
+        }
+
+        // Only backups that carry bookmarks replace them; older backups leave the current ones alone.
+        val backedUpBookmarks = root.optJSONArray(FIELD_BOOKMARKS)
+        if (backedUpBookmarks != null &&
+            (selectedExportItems == null || ExportItem.BOOKMARKS in selectedExportItems)
+        ) {
+            BookmarkRepository(context).replaceFromBackup(BookmarkBackupCodec.parse(backedUpBookmarks))
         }
 
         val importsCalendarEvents =
@@ -384,8 +404,6 @@ object SettingsBackupManager {
         prefName: String,
         key: String,
     ): Boolean {
-        // Search history is never backed up or restored, including from older backup files.
-        if (isSearchHistoryKey(prefName, key)) return true
         if (prefName != BasePreferences.PREFS_NAME) return false
         return key in excludedUserPreferenceKeys ||
             key.startsWith(FeatureFlags.PREFERENCE_KEY_PREFIX) ||
@@ -397,6 +415,9 @@ object SettingsBackupManager {
         key: String,
         options: ExportOptions,
     ): Boolean {
+        if (isSearchHistoryKey(prefName, key)) {
+            return options.includes(ExportItem.SEARCH_HISTORY)
+        }
         if (isPinnedItemKey(prefName, key)) {
             return options.includes(ExportItem.PINNED_ITEMS)
         }

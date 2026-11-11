@@ -62,6 +62,8 @@ import com.tk.quicksearch.search.models.AppInfo
 import com.tk.quicksearch.search.models.CalendarEventInfo
 import com.tk.quicksearch.search.models.ReminderInfo
 import com.tk.quicksearch.search.reminders.ReminderRow
+import com.tk.quicksearch.search.bookmarks.BookmarkRow
+import com.tk.quicksearch.search.bookmarks.LocalBookmarksSectionParams
 import com.tk.quicksearch.search.models.ContactInfo
 import com.tk.quicksearch.search.models.DeviceFile
 import com.tk.quicksearch.search.models.NoteInfo
@@ -282,6 +284,9 @@ internal fun openTopMatch(
         is TopMatchItem.Reminder ->
             params.remindersParams?.onReminderClick?.invoke(item.reminder) ?: return null
         is TopMatchItem.Note -> params.notesParams?.onNoteClick?.invoke(item.note) ?: return null
+        is TopMatchItem.Bookmark ->
+            params.bookmarksParams?.onBookmarkClick?.invoke(item.bookmark) ?: return null
+        is TopMatchItem.Noted -> params.notedParams?.onItemClick?.invoke(item.item) ?: return null
         is TopMatchItem.Other -> return true
     }
     return false
@@ -419,6 +424,32 @@ private fun TopMatchRow(
                 onMarkDone = remindersParams.onMarkDone,
                 onDelete = remindersParams.onDelete,
                 isPredicted = isPredicted,
+            )
+        }
+
+        is TopMatchItem.Bookmark -> LocalBookmarksSectionParams.current?.let { bookmarksParams ->
+            BookmarkRow(
+                bookmark = item.bookmark,
+                onClick = bookmarksParams.onBookmarkClick,
+                isPredicted = isPredicted,
+            )
+        }
+
+        is TopMatchItem.Noted -> com.tk.quicksearch.search.noted.LocalNotedSectionParams.current?.let { notedParams ->
+            com.tk.quicksearch.search.noted.NotedRow(
+                item = item.item,
+                onClick = notedParams.onItemClick,
+                iconPackPackage = notedParams.iconPackPackage,
+                isPredicted = isPredicted,
+                isPinned =
+                    params.remindersParams?.pinnedReminderIds.orEmpty()
+                        .contains(com.tk.quicksearch.search.noted.NotedGlanceTasks.reminderIdFor(item.item.id)),
+                onTogglePin =
+                    params.remindersParams?.let { remindersParams ->
+                        com.tk.quicksearch.search.noted.NotedGlanceTasks.asPinnedReminder(item.item)?.let { reminder ->
+                            { remindersParams.onTogglePin(reminder) }
+                        }
+                    },
             )
         }
 
@@ -578,7 +609,6 @@ private fun TopMatchAppRow(
             isPinned = params.pinnedPackageNames.contains(app.launchCountKey()),
             showUninstall =
                 !app.isSystemApp &&
-                    app.userHandleId == null &&
                     app.packageName != context.packageName,
             hasNickname = !params.getAppNickname(app.launchCountKey()).isNullOrBlank(),
             hasTrigger = params.getAppTrigger(app.launchCountKey())?.word?.isNotBlank() == true,

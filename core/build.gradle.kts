@@ -8,6 +8,9 @@
  *
  * The upstream :app module remains fully buildable as before.
  */
+import com.android.build.api.dsl.LibraryExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -16,9 +19,10 @@ plugins {
     id("kotlin-parcelize")
 }
 
-android {
+// Public AGP DSL interface: the legacy android {} accessor is an error on AGP 9.
+extensions.configure<LibraryExtension> {
     namespace = "com.tk.quicksearch"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
@@ -26,11 +30,14 @@ android {
         // Library modules do not generate app-level BuildConfig fields by default,
         // but upstream :app source (e.g. CrashLogManager) reads them. Mirror the
         // upstream :app values here so those call sites compile.
-        buildConfigField("String", "VERSION_NAME", "\"4.9\"")
-        buildConfigField("int", "VERSION_CODE", "103")
+        buildConfigField("String", "VERSION_NAME", "\"5.0\"")
+        buildConfigField("int", "VERSION_CODE", "104")
         // Upstream :app has a `distribution` flavor dimension; core consumes `standard`.
         buildConfigField("String", "FLAVOR", "\"standard\"")
         buildConfigField("String", "APPLICATION_ID", "\"com.tk.quicksearch\"")
+        // Upstream standard-flavor flag for the author's Noted app; we never declare its
+        // permission, so keep the integration off.
+        buildConfigField("boolean", "NOTED_INTEGRATION", "false")
     }
 
     sourceSets["main"].apply {
@@ -54,8 +61,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 
